@@ -19,7 +19,15 @@ case "${1:-status}" in
   status)
     systemctl --user status "$unit" --no-pager || true
     if [[ -f "$project_dir/runtime/lingua-franca-study/study.json" ]]; then
-      cat "$project_dir/runtime/lingua-franca-study/study.json"
+      "$project_dir/.venv/bin/python" - "$project_dir/runtime/lingua-franca-study" <<'PYTHON'
+import json,sys
+from pathlib import Path
+root=Path(sys.argv[1]);study=json.loads((root/'study.json').read_text())
+print(json.dumps(study,indent=2))
+current=root/study.get('current','')/'status.json'
+if current.exists():
+    run=json.loads(current.read_text());print('Current run:',json.dumps(run))
+PYTHON
     fi
     ;;
   logs) journalctl --user -u "$unit" -n 60 --no-pager ;;
