@@ -1,0 +1,28 @@
+#!/usr/bin/env bash
+set -euo pipefail
+project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+unit=lingua-franca-study
+case "${1:-status}" in
+  start)
+    if systemctl --user is-active --quiet "$unit"; then
+      echo 'Study is already running.'
+      exit 0
+    fi
+    systemctl --user reset-failed "$unit" 2>/dev/null || true
+    gh_dir="$(dirname "$(command -v gh)")"
+    systemd-run --user --unit="$unit" --property=CPUQuota=100% --property=MemoryMax=2G \
+      --property=Nice=10 --property=KillMode=control-group --working-directory="$project_dir" \
+      --setenv="PATH=$gh_dir:$PATH" \
+      "$project_dir/.venv/bin/python" -m galapagos.society_study \
+      --output "$project_dir/runtime/lingua-franca-study" --publish
+    ;;
+  status)
+    systemctl --user status "$unit" --no-pager || true
+    if [[ -f "$project_dir/runtime/lingua-franca-study/study.json" ]]; then
+      cat "$project_dir/runtime/lingua-franca-study/study.json"
+    fi
+    ;;
+  logs) journalctl --user -u "$unit" -n 60 --no-pager ;;
+  stop) systemctl --user stop "$unit" ;;
+  *) echo 'Usage: tools/societyctl {start|status|logs|stop}' >&2; exit 2 ;;
+esac

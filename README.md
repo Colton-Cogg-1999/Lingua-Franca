@@ -1,160 +1,139 @@
-# Galapagos — distributed sociolinguistics laboratory
+# Lingua Franca
 
-**Current deployment:** a six-region, 2,000-round fragmentation experiment now runs
-in Kubernetes with Calico-enforced isolation and transactional Redpanda logging.
-See [the run plan and controls](docs/experiments/roman-fracture.md).
-Use `tools/galapagosctl status` to inspect progress. The sections below describe the
-preceding local prototype; its statements that cluster/broker integration is pending
-are historical and superseded by the deployment document. The current model has
-12 concepts; the previous four-concept model is archived in `docs/model_versions/`.
+A reproducible artificial-society laboratory for studying how trade incentives,
+cultural attitudes, isolation, and reinforcement learning interact with shared vocabulary.
 
+**Current architecture: Python + SQLite. No Redpanda, Kubernetes, Docker, GPU, API key,
+or LLM is required.** Each run is a single process. Geographic separation is an explicit
+contact graph, checked against the recorded encounters.
 
-Speakers produce short utterances from their own learned lexicons and constructions.
-Listeners interpret them using their own knowledge. Misunderstanding can trigger
-pointing and clarification, which teach a new word or construction. Learned forms
-can then appear in the learner's later utterances. No language model is involved.
+These are experiments on synthetic agents. They do not establish facts about human
+nature, actual cultures, or the history of Romance languages.
 
-The communication game runs in one process, a process pool, or separate HTTP worker
-processes. All three transports have been exercised on this machine. Redpanda and
-kind remain prepared integration components, not a running cluster.
+## What agents do
 
-## Try the game
+Six communities produce and consume grain, water, timber, ore, cloth, and medicine.
+Each agent attempts two one-for-one barters per round. Both traders must benefit from
+the exchange; communication effort is charged separately to the buyer. Regional
+specialization and a rotating drought create reasons to exchange goods.
 
-Python 3.11+ is sufficient; no packages are required for the simulator.
+Agents request goods using learned words. Listeners interpret those words from their
+own vocabulary. Pointing can repair misunderstandings. Agents cannot read each other's
+private dictionaries. Four speaking strategies compete:
 
-```sh
-cd /home/colton/Projects/Galapagos
-python -m galapagos.play --config examples/contact-game.json --rounds 50 --workers 3 --output runs/my-game
+- **Conventional:** use a word from the speaker's own lexicon.
+- **Accommodate:** use a regional word previously heard in a successful encounter.
+- **Clarify:** pay for explicit pointing to communicate the request.
+- **Innovate:** coin a word that may or may not be learned by the listener.
+
+Each agent uses a contextual bandit with separate local and remote strategy values.
+Reward is the buyer's inventory-utility gain minus communication effort. Vocabulary
+learning and trading-partner preferences are separate from strategy learning. Attitudes
+toward change affect learning, repair, and the effort of using unfamiliar conventions.
+Cultural succession replaces language and strategy knowledge through three local tutors
+while retaining physical resources. There is no automatic reward for novelty.
+
+```mermaid
+flowchart LR
+    P[Production and consumption] --> E[Choose partner on allowed contact graph]
+    E --> S[Choose speaking strategy]
+    S --> I[Private lexicon interpretation and optional pointing]
+    I --> T[Mutually beneficial barter]
+    T --> R[Utility gain minus communication cost]
+    R --> L[Update strategy values, vocabulary, and partner preference]
+    L --> C[Cultural succession]
+    C --> D[(SQLite: events + summary + checkpoint)]
+    D --> P
 ```
 
-Output directories must be new. Start with the generated `report.md`: it includes
-actual utterances, interpretations, repair exchanges, and the lexical evidence
-before and after learning. It also finds an example of a learner later producing
-an acquired form, when one exists.
+## Run a quick experiment
 
-For three independently launched HTTP worker processes on loopback:
+Python 3.11+; the simulator has no third-party dependencies.
 
 ```sh
-python -m galapagos.network_demo --rounds 50 --output runs/my-http-game
+python -m galapagos.society --output runs/example --rounds 1000 --population 20 --seed 476
 ```
 
-This command owns and cleans up its workers. To run workers separately, start
-`python -m galapagos.worker --port 8100` (and other ports), then provide repeated
-`--worker-url http://127.0.0.1:8100` options to `galapagos.play`. URLs are assigned
-to island tasks by island index. Workers use immutable request snapshots and do
-not persist population state themselves. HTTP is for trusted local environments;
-there is no authentication or TLS. The service binds to loopback by default.
+Re-running the identical command resumes from the last committed round. Changing the
+model source or configuration causes a mismatch error instead of silently mixing models.
+Stop with Ctrl+C; SQLite commits each round's events, summary, and checkpoint atomically.
+Do not run two writers against the same output directory.
 
-## What is implemented
-
-- Three initial island vocabularies over four visible objects: water, fruit, stone, seed.
-- Two shared actions (`give`, `show`) and two learnable construction orders.
-- Production sampled from an individual's positive lexical/construction evidence.
-- Interpretation that cannot read the hidden intention or source speaker's knowledge.
-- Binary success feedback; optional perfectly grounded pointing/repair on failure.
-- Evidence updates after successful action or repair; unsuccessful ungrounded tokens do not teach meanings.
-- Persistent friend IDs, local/remote contact, optional prestige influence, novel word tokens, migration, and sampled tutor-based cohort acquisition.
-- Per-island deterministic random streams, round barriers, process and HTTP transports, retries, result ownership validation, and state integrity checks.
-- Atomic per-round checkpoint/outbox bundles, readable traces, metrics, replicated controls, and optional static plots.
-
-A concrete observed trace: agent 36 heard `koro give`, failed to understand, and
-learned that `koro` names stone through pointing. The following round it produced
-`give koro` itself, combining the learned noun with its own construction.
-
-## Interpretation and limitations
-
-This is a tiny artificial referential language, not fluent dialogue. Clarification
-requests and gestures in brackets are fixed protocol annotations. Object concepts
-and action meanings are shared in advance. Grounding is perfectly informative
-when repair occurs, and knowledge does not decay. Those assumptions make learning
-comparatively easy. First-attempt success is the learning metric; final success
-also counts help from repair and must not be interpreted as independent mastery.
-
-Grammatical variation is limited to verb–object versus object–verb order. Learned
-word meanings and construction evidence are shared between comprehension and
-production; construction and noun choice are sampled independently. The current
-parser does not support compositional syntax beyond this two-token task. Homonyms
-can cause ambiguity, but there is no pragmatic inference or natural-language text.
-
-Friendship IDs persist across migration; ties to departed speakers are removed.
-There is no homophily, relationship formation, register, identity resistance, or
-institutional pressure yet. Cohort learners receive perfectly grounded tutor
-samples. Prestige is a fixed random attribute; default experiments disable it.
-Migration is uniform between other islands. All speakers remain equally likely
-to be selected within the chosen contact pool.
-
-During a round, production uses the frozen round-start population. Each worker
-updates its own listeners sequentially. Learned forms become available for
-production the next round. This explicit synchronous model is what makes worker
-speed and message arrival order irrelevant; it differs from asynchronous learning.
-
-## Artifacts and recovery
-
-Each committed directory `rounds/000050/` contains:
-
-- `checkpoint.json`: configuration, source fingerprint, and full population state.
-- `events.jsonl`: a committed event batch, ready for later ledger publication.
-- `summary.json`: communication rates and vocabulary distributions.
-- `manifest.json`: SHA-256 integrity checks for those three files.
-
-A staging directory is flushed and renamed only when the bundle is complete.
-Stale `.pending-*` directories are ignored. At this stage, commit atomicity is
-local to one filesystem, and the coordinator is a single point of control. This
-is not distributed consensus or a highly available control plane.
-
-Resume from the latest committed round into a new directory:
+## Run the complete study
 
 ```sh
-python -m galapagos.play --resume runs/my-game --rounds 20 --workers 3 --output runs/my-game-continued
+python -m pip install -e '.[analysis]'
+python -m galapagos.society_study --output runs/full-study
 ```
 
-Resumption rejects a changed model implementation or corrupted bundle. Random
-streams are derived from seed, round, island, and phase rather than process
-scheduling. Identical configuration/model version intentionally identifies the
-same experiment; duplicate deliveries retain identical event IDs. Root-level
-`events.jsonl`, `metrics.jsonl`, and `report.md` are derived exports; committed round
-bundles are authoritative and survive interrupted export. A continuation's exports
-contain only its initial checkpoint and new rounds; preserve its parent run.
+Nine sequential runs: three seeds (476, 911, 2026), three conditions, 24,000 rounds each,
+120 agents, and **51,840,000 encounters** in total. Conditions compare adaptive strategies,
+uniform-random strategies, and adaptive strategies with uniform effective cultural
+openness. Fixed strategies still permit vocabulary learning and partner preferences.
+The study produces an audited report and plots under `runs/full-study/report/`.
+Raw event ledgers stay local; plan for several GB of disk space.
 
-## Controlled experiments and plots
+The contact timeline is connected (20%), fragmented (45%), sparse trade routes (25%),
+mass contact (8%), and dense contact (2%). During fragmentation, two regions are completely
+isolated and two pairs retain sparse links. Rounds are not historical years.
+
+On the original workstation, the authorized full run uses a user service capped at
+one CPU core and 2 GiB of memory. `tools/societyctl status`, `logs`, `stop`, and `start`
+inspect, stop, or resume it. The CPU cap applies to the whole service, including analysis.
+A source/configuration-locked checkpoint supports recovery after interruption. The
+transient service does not automatically restart after a reboot; use `start` to resume.
+
+## Results and inspection
+
+The full-study report is generated **after every run finishes**:
+
+- [Full report](docs/results/lingua-franca/report.md)
+- [Machine-readable metrics and audit checks](docs/results/lingua-franca/metrics.json)
+- [Individual-seed trajectories](docs/results/lingua-franca/trajectories.png)
+
+Until completion, those files may not exist. Status is in the study's `study.json` and
+each run's `status.json`; the SQLite checkpoint is authoritative between status updates.
+The report publishes all seeds, economic and linguistic outcomes, paired comparisons,
+null or unfavorable results, and implementation limitations. It checks event completeness,
+resource balance, legal contact pairs, and consistency between summaries and events.
+
+Example read-only ledger query:
 
 ```sh
-python -m galapagos.game_experiments --replicates 10 --rounds 50 --output runs/my-controls
-# If interrupted, repeat the same parameters with --resume.
-python -m unittest discover -s tests -v
+sqlite3 -readonly runs/example/ledger.sqlite \
+  'SELECT strategy,count(*),avg(traded),avg(reward) FROM events GROUP BY strategy;'
 ```
 
-Controls compare repair+learning, no repair, no learning, and isolation. Migration,
-turnover, and innovation are disabled to avoid alternative routes for acquisition.
-Per-replicate files are committed before aggregation. Shared seeds do not guarantee
-identical encounter streams across interventions because branching consumes random
-numbers differently. Results describe this model, not empirical human populations.
+For custom analyses, `events` contains every request, strategy, first-pass success,
+repair use, grounded interpretation, trade result, reward, and each trader's utility gain.
+`first_success` requires stock availability as well as comprehension. `repair_used`
+includes explicit clarification even when the requested good is unavailable; `grounded`
+records successful interpretation with stock. Neither is a pure language proficiency test.
 
-For PNG and SVG figures, an isolated `.venv` with Matplotlib has been installed.
-Exact analysis dependencies are recorded in `requirements-analysis.txt`.
+## Validation
 
 ```sh
-.venv/bin/python -m galapagos.plot_game runs/my-game --ablations runs/my-controls
+python -m unittest discover -s tests
 ```
 
-The existing demonstration is in `runs/communication-game/report.md`; plots and
-control results are in `runs/communication-game/` and `runs/game-ablations/`.
+Tests cover resource conservation, trade incentives, unknown-word interpretation,
+contact restrictions, strategy learning, transactional rollback, and deterministic restart,
+as well as the earlier simulator's regression tests.
 
-See [the first measured results](docs/game-results.md) for the acquisition trace, controlled comparisons, transport timings, and validation evidence.
+## Scope and next experiments
 
-## Infrastructure direction
+The reinforcement mechanism is immediate-reward bandit learning, not deep RL or a
+language model. Agents use single-word requests and shared nonlinguistic concepts.
+There is no grammar, migration, market pricing, mortality, or empirical calibration.
+Three seeds are exploratory evidence about this program, not a universal conclusion.
+Useful next controls include always-conventional strategies, no-trade conditions,
+separate attitude interventions, and alternative production and tutor rules. LLM-based
+speech can later be introduced behind the same task and ledger, with explicit cost limits.
 
-See [the distributed protocol](docs/communication-architecture.md). `infra/kind.yaml`
-defines labeled island nodes; `infra/compose.yaml` defines a development Redpanda
-broker. Neither has been deployed here: Docker socket access is denied to this
-session, and kind/kubectl were not installed. The publisher is available as
-`python -m galapagos.publish runs/my-game/events.jsonl` after installing `.[ledger]`.
-It is untested against a live broker, preserves per-run partition ordering, and
-requires consumer deduplication across repeated imports. Broker retention is not
-an archive policy. The development broker image is mutable until a tested digest
-is selected.
+## Earlier Galapagos experiments
 
-The earlier probability-only model remains available through `python -m galapagos`;
-its old instructions are in [variant-prototype.md](docs/variant-prototype.md).
-It is separate from the grounded communication game. Local inference options are
-assessed in [feasibility.md](docs/feasibility.md); LLM experiments are deferred.
+The original source, deployment manifests, and reports are retained for provenance.
+They are legacy experiments; the current commands above never start a broker or cluster.
+[Earlier project documentation](docs/legacy-galapagos.md) describes those historical
+versions. [Previous historical-comparison results](docs/results/historical-comparison/metrics.json)
+are separate from this study. The package namespace remains `galapagos` to preserve imports.

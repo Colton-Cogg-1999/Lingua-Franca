@@ -13,3 +13,8 @@ tools/downloads/
 *.pem
 *.key
 models/
+
+# Local experiment databases
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
