@@ -1,0 +1,21 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "galapagos-language-lab"
+version = "0.1.0"
+description = "Reproducible simulations of language contact in synthetic island communities"
+requires-python = ">=3.11"
+dependencies = []
+
+[project.optional-dependencies]
+ledger = ["confluent-kafka>=2.6,<3"]
+analysis = ["matplotlib>=3.10,<4"]
+
+[project.scripts]
+galapagos = "galapagos.__main__:main"
+galapagos-play = "galapagos.play:main"
+
+[tool.setuptools.packages.find]
+include = ["galapagos*"]

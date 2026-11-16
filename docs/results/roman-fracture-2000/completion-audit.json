@@ -1,0 +1,12 @@
+{
+  "run_id": "42c2febb3e8c3cff12b2",
+  "rounds": 2000,
+  "broker_published_through": 2000,
+  "consumer_projected_through": 2000,
+  "expected_conversations": 2880000,
+  "observed_conversations": 2880000,
+  "per_round_counts_match": true,
+  "boundary_violations": 0,
+  "unverifiable": 0,
+  "passed": true
+}

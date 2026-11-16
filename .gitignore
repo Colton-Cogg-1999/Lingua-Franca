@@ -1,0 +1,15 @@
+__pycache__/
+*.egg-info/
+.venv/
+runs/
+runtime/
+tools/bin/
+tools/downloads/
+
+# Local credentials and model downloads
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+models/

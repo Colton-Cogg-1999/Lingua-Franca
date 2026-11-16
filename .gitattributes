@@ -1,0 +1,2 @@
+# Preserve generated scientific figures byte-for-byte.
+*.svg -whitespace
