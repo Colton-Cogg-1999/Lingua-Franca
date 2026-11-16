@@ -183,3 +183,15 @@ tools/historyctl resume
 A user service runs `tools/watch-history`, refreshing reports and producing a
 completion audit for each treatment after the independent consumer catches up.
 Pause affects the suite job; the broker and consumer stay running.
+
+## Runtime resumption note
+
+The eleven-node cluster exceeded the host user keyring quota even with the old
+cluster stopped. Each project node now sets containerd runc `NoNewKeyring = true`;
+this is recorded in `infra/kind-history.yaml` and its renderer. It avoids allocating
+a fresh session keyring per workload. No host sysctl or desktop configuration was
+changed. This trusted local research cluster does not use kernel keyrings for
+agent isolation; geographic isolation is still independently tested with Calico.
+
+Simulation image ID: `sha256:447b9ac2f56aa1f5ded3f3541436ae4b56750882cb361ff8c89f291b90fc6719`.
+Model and study source commit before launch: `0766785`.

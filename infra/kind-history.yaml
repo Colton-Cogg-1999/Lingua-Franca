@@ -39,3 +39,9 @@ nodes:
 - role: worker
   labels:
     galapagos/island: '9'
+containerdConfigPatches:
+- '[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]
+
+  NoNewKeyring = true
+
+  '

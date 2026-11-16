@@ -31,6 +31,7 @@ for name in plans:
  for i in range(10):c['command']+=['--worker-url',f'http://region-{i}:8100']
  (ROOT/f'infra/job-{name}.yaml').write_text(yaml.safe_dump(job,sort_keys=False))
 cluster=yaml.safe_load((ROOT/'infra/kind-regions.yaml').read_text());cluster['name']='galapagos-history'
+cluster['containerdConfigPatches']=['[plugins."io.containerd.grpc.v1.cri".containerd.runtimes.runc.options]\nNoNewKeyring = true\n']
 cluster['networking']['podSubnet']='10.246.0.0/16'
 cluster['nodes'][0]['extraMounts'][0]['hostPath']=str(ROOT/'runtime/history-data')
 cluster['nodes']+= [{'role':'worker','labels':{'galapagos/island':str(i)}} for i in range(6,10)]
