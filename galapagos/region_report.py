@@ -11,10 +11,18 @@ def main():
     args=parser.parse_args()
     plan=json.loads((args.run/'plan.json').read_text())
     folders=sorted((args.run/'rounds').glob('[0-9]*'))
-    summaries=[json.loads((folder/'summary.json').read_text()) for folder in folders]
+    summaries=[]
+    last_audit=None
+    latest=None
+    for folder in folders:
+        latest=json.loads((folder/'summary.json').read_text())
+        summaries.append({key:latest[key] for key in ('round','mean_lexical_distance','within_group_lexical_distance') if key in latest})
+        if 'held_out_comprehension' in latest:
+            last_audit=latest['held_out_comprehension']
+    if summaries and last_audit:
+        summaries[-1]['held_out_comprehension']=last_audit
     if not summaries:
         parser.error('no committed rounds')
-    latest=summaries[-1]
     population=json.loads((folders[-1]/'checkpoint.json').read_text())['state']['speakers']
     lines=['# Roman-collapse-inspired regional experiment','',
            f"Latest committed round: **{latest['round']} / {plan['rounds']}**.",

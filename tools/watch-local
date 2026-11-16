@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+set -euo pipefail
+project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cd "$project_dir"
+for run in historical-main historical-continuous historical-related; do
+ "$project_dir/.venv/bin/python" -m galapagos.watch_run "runtime/local-data/experiment/$run" --analytics runtime/local-data/analytics/projection.sqlite --report-every 1000
+done

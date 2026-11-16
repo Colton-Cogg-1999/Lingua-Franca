@@ -12,7 +12,9 @@ def main():
     parser=argparse.ArgumentParser()
     parser.add_argument('run',type=Path)
     parser.add_argument('--analytics',type=Path,required=True)
+    parser.add_argument('--report-every',type=int,default=100)
     args=parser.parse_args()
+    if args.report_every < 1:parser.error('report interval must be positive')
     rendered=-1
     while True:
         status_path=args.run/'status.json'
@@ -21,7 +23,7 @@ def main():
             continue
         status=json.loads(status_path.read_text())
         round_number=status['round']
-        if rendered<0 or round_number-rendered>=100 or (status['state']=='complete' and rendered!=round_number):
+        if rendered<0 or round_number-rendered>=args.report_every or (status['state']=='complete' and rendered!=round_number):
             subprocess.run([sys.executable,'-m','galapagos.region_report',str(args.run)],check=True)
             rendered=round_number
             print(json.dumps({'report_round':round_number,'state':status['state']}),flush=True)

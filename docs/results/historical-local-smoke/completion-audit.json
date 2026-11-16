@@ -1,0 +1,12 @@
+{
+  "run_id": "47777dc4202d40fcb034",
+  "rounds": 18,
+  "broker_published_through": 18,
+  "consumer_projected_through": 18,
+  "expected_conversations": 2880,
+  "observed_conversations": 2880,
+  "per_round_counts_match": true,
+  "boundary_violations": 0,
+  "unverifiable": 0,
+  "passed": true
+}

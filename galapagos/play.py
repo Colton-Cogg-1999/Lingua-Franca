@@ -18,7 +18,7 @@ from .game import Game, GameConfig, VERSION, digest, summarize
 
 def source_hash():
     root = Path(model.__file__).parent
-    names = ('game.py', 'history.py', 'longrun.py', 'regions.py', 'policies.py', 'play.py')
+    names = ('game.py', 'history.py', 'local_execution.py', 'longrun.py', 'regions.py', 'policies.py', 'play.py')
     return hashlib.sha256(b''.join(name.encode() + b'\0' + (root / name).read_bytes() for name in names)).hexdigest()
 
 

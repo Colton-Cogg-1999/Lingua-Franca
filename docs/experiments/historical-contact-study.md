@@ -1,8 +1,10 @@
 # Historical contact study: 21,250 rounds per treatment
 
-Status: prepared for execution on the project-owned `galapagos-history` cluster.
-See `tools/historyctl status` for live progress; this document is a preregistered
-experimental plan, not a claim of completed results.
+Current execution: local Python workers and a standalone Redpanda container.
+Kubernetes execution was retired at the user's request before any long treatment
+started. Use `tools/localctl status`. The timeline and treatments below remain
+unchanged; the original Kubernetes deployment details are retained as history.
+See `local-execution.md` for current controls and resource limits.
 
 ## Question and historical interpretation
 
@@ -140,7 +142,7 @@ Questions specified before seeing results:
 Do not classify outputs as separate languages from a distance threshold. Success
 is informative regardless of whether the desired historical-looking pattern appears.
 
-## Execution, storage and provenance
+## Original Kubernetes execution (superseded), storage and provenance
 
 A separate eleven-node rootless kind cluster: one control plane and ten region
 workers, each geographically labeled. The completed baseline cluster's containers

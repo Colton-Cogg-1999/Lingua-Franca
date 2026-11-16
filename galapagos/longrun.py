@@ -1,4 +1,4 @@
-"""Bounded Kubernetes experiment with committed outboxes and Redpanda transactions."""
+"""Bounded local or Kubernetes experiment with committed outboxes and Redpanda transactions."""
 import argparse
 from concurrent.futures import ThreadPoolExecutor
 from dataclasses import asdict
@@ -180,13 +180,17 @@ def main():
     parser.add_argument('--output', type=Path, required=True)
     parser.add_argument('--brokers', default='redpanda:9092')
     parser.add_argument('--topic', default='galapagos.evolution.v2')
-    parser.add_argument('--worker-url', action='append', required=True)
+    parser.add_argument('--worker-url', action='append', default=[])
+    parser.add_argument('--execution', choices=['kubernetes', 'local'], default='kubernetes')
+    parser.add_argument('--workers', type=int, default=2)
     args = parser.parse_args()
     plan = json.loads(args.plan.read_text())
     config = validate_plan(plan)
-    if len(args.worker_url) != config.islands:
+    if args.workers < 1:
+        parser.error('workers must be positive')
+    if args.execution == 'kubernetes' and len(args.worker_url) != config.islands:
         parser.error('one worker endpoint per region required')
-    run_id = digest(dict(model=VERSION, source=source_hash(), plan=plan))[:20]
+    run_id = digest(dict(model=VERSION, source=source_hash(), plan=plan, execution=args.execution))[:20]
     root = args.output
     root.mkdir(parents=True, exist_ok=True)
     (root / 'rounds').mkdir(exist_ok=True)
@@ -196,8 +200,16 @@ def main():
     durable_json(plan_path, plan)
     game = load_latest(root, config, run_id, plan)
     ledger = Ledger(args.brokers, args.topic, run_id)
-    transport = RegionTransport(args.worker_url)
-    policies = KubernetesPolicies()
+    if args.execution == 'local':
+        from .local_execution import LocalRegions
+        import atexit
+        transport = LocalRegions(args.workers)
+        atexit.register(transport.shutdown)
+        policies = None
+    else:
+        transport = RegionTransport(args.worker_url)
+        policies = KubernetesPolicies()
+    durable_json(root / 'execution.json', dict(mode=args.execution, workers=args.workers if args.execution == 'local' else config.islands, network_isolation=args.execution == 'kubernetes'))
     if game.state['round'] == 0 and not (root / 'rounds' / '000000').exists():
         event = dict(schema=2, kind='initialized', event_id=f'{run_id}:0:initial', run_id=run_id,
                      model=VERSION, round=0, plan=plan, state=game.state)
@@ -216,13 +228,19 @@ def main():
         parameters = parameters_for(plan, next_round)
         boundary = None
         if phase != active_phase:
-            policies.apply(topology)
-            checks = verify(topology, args.worker_url)
+            if policies is not None:
+                policies.apply(topology)
+                checks = verify(topology, args.worker_url)
+                checks['method'] = 'network_reachability'
+                checks['network_isolation'] = True
+            else:
+                from .local_execution import check_visibility
+                checks = check_visibility(game, topology)
             boundary = dict(kind='geography_changed', schema=2, run_id=run_id, round=next_round,
                             event_id=f'{run_id}:{next_round}:geography', phase=phase, topology=topology, checks=checks, parameters=parameters)
             active_phase = phase
             print(json.dumps(dict(status='boundaries_verified', phase=phase, next_round=next_round, checks=checks)), flush=True)
-        # If tasks fail, no state is committed; Kubernetes restarts from the last durable round.
+        # If tasks fail, no state is committed; restart resumes from the last durable round.
         events, summary = game.step(transport, topology, parameters)
         for event in events:
             event['geographic_phase'] = phase
