@@ -1,0 +1,29 @@
+#!/usr/bin/env bash
+set -euo pipefail
+project_dir="$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")/.." && pwd)"
+cluster_cli=("$project_dir/tools/bin/kubectl" --kubeconfig "$project_dir/runtime/history-kubeconfig" -n galapagos)
+cd "$project_dir"
+case "${1:-status}" in
+ status)
+  "${cluster_cli[@]}" get jobs,pods
+  python - <<'PY'
+import json
+from pathlib import Path
+root=Path('runtime/history-data/experiment')
+for p in [root/'suite-status.json', *sorted(root.glob('historical-*/status.json'))]:
+ if p.exists(): print(p, json.dumps(json.loads(p.read_text()),indent=2))
+PY
+  ;;
+ logs) "${cluster_cli[@]}" logs job/historical-suite --tail=30 ;;
+ audit)
+  python -m json.tool runtime/history-data/analytics/status.json
+  for run in historical-main historical-continuous historical-related; do
+   file="runtime/history-data/experiment/$run/completion-audit.json"
+   if [[ -f "$file" ]]; then python -m json.tool "$file"; fi
+  done
+  ;;
+ report) "$project_dir/.venv/bin/python" -m galapagos.region_report "runtime/history-data/experiment/${2:-historical-main}" ;;
+ pause) "${cluster_cli[@]}" patch job historical-suite --type=merge -p '{"spec":{"suspend":true}}' ;;
+ resume) "${cluster_cli[@]}" patch job historical-suite --type=merge -p '{"spec":{"suspend":false}}' ;;
+ *) echo 'Usage: tools/historyctl [status|logs|audit|report [run]|pause|resume]' >&2; exit 2 ;;
+esac

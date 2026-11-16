@@ -1,0 +1,41 @@
+kind: Cluster
+apiVersion: kind.x-k8s.io/v1alpha4
+name: galapagos-history
+networking:
+  disableDefaultCNI: true
+  podSubnet: 10.246.0.0/16
+nodes:
+- role: control-plane
+  extraMounts:
+  - hostPath: /home/colton/Projects/Galapagos/runtime/history-data
+    containerPath: /galapagos-data
+- role: worker
+  labels:
+    galapagos/island: '0'
+- role: worker
+  labels:
+    galapagos/island: '1'
+- role: worker
+  labels:
+    galapagos/island: '2'
+- role: worker
+  labels:
+    galapagos/island: '3'
+- role: worker
+  labels:
+    galapagos/island: '4'
+- role: worker
+  labels:
+    galapagos/island: '5'
+- role: worker
+  labels:
+    galapagos/island: '6'
+- role: worker
+  labels:
+    galapagos/island: '7'
+- role: worker
+  labels:
+    galapagos/island: '8'
+- role: worker
+  labels:
+    galapagos/island: '9'

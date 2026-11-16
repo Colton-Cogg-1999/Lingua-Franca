@@ -17,7 +17,9 @@ from .game import Game, GameConfig, VERSION, digest, summarize
 
 
 def source_hash():
-    return hashlib.sha256(Path(model.__file__).read_bytes()).hexdigest()
+    root = Path(model.__file__).parent
+    names = ('game.py', 'history.py', 'longrun.py', 'regions.py', 'policies.py', 'play.py')
+    return hashlib.sha256(b''.join(name.encode() + b'\0' + (root / name).read_bytes() for name in names)).hexdigest()
 
 
 def write_durable(path, text):

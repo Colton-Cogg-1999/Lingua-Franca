@@ -4,13 +4,13 @@ Interpretation receives an utterance, visible objects and listener knowledge onl
 The environment reveals the intended referent exclusively during explicit repair.
 """
 from copy import deepcopy
-from dataclasses import asdict, dataclass
+from dataclasses import asdict, dataclass, replace
 import hashlib
 import json
 import math
 import random
 
-VERSION = 'communication-game-v2-regions'
+VERSION = 'communication-game-v3-history'
 OBJECTS = ('water', 'fruit', 'stone', 'seed', 'bread', 'salt', 'fish', 'wood', 'cloth', 'tool', 'cup', 'rope')
 ACTIONS = ('give', 'show')
 ORDERS = ('verb_object', 'object_verb')
@@ -49,11 +49,23 @@ class GameConfig:
     construction_innovation: float = 0.0
     retention: float = 1.0
     compact_events: bool = False
+    route_weights: list | None = None
+    minimum_population: int = 0
 
     def __post_init__(self):
         for name in ('islands', 'population', 'encounters'):
             if type(getattr(self, name)) is not int or getattr(self, name) < 1:
                 raise ValueError(f'{name} must be a positive integer')
+        if type(self.minimum_population) is not int or not 0 <= self.minimum_population <= self.population:
+            raise ValueError('invalid minimum population')
+        if self.route_weights is not None:
+            w = self.route_weights
+            if len(w) != self.islands or any(len(row) != self.islands for row in w):
+                raise ValueError('one route weight per region pair required')
+            if any(isinstance(v, bool) or not math.isfinite(v) or v < 0 for row in w for v in row):
+                raise ValueError('route weights must be finite and nonnegative')
+            if any(w[i][i] != 0 or any(w[i][j] != w[j][i] for j in range(self.islands)) for i in range(self.islands)):
+                raise ValueError('route weights must be symmetric with zero diagonal')
         if type(self.seed) is not int:
             raise ValueError('seed must be an integer')
         for name in ('contact', 'migration', 'turnover', 'repair', 'prestige_bias',
@@ -214,7 +226,14 @@ def island_task(task):
                 pool = friends
             if not pool:
                 continue
-            source = rng.choice(pool)
+            if config.route_weights is not None and pool[0]['island'] != island:
+                sizes = {i: sum(s['island'] == i for s in remote) for i in {s['island'] for s in remote}}
+                weights = [config.route_weights[island][s['island']] / sizes[s['island']] for s in pool]
+                if not sum(weights):
+                    continue
+                source = rng.choices(pool, weights)[0]
+            else:
+                source = rng.choice(pool)
             intention = dict(action=rng.choice(ACTIONS), object=rng.choice(OBJECTS))
             events.append(encounter(source, listener, intention, config, rng))
     return dict(task_id=task['task_id'], snapshot_hash=task['snapshot_hash'], island=island,
@@ -265,7 +284,7 @@ class Game:
             snapshot = dict(round=self.state['round'], next_id=self.state['next_id'],
                             speakers=deepcopy(sorted([s for s in self.state['speakers']
                                                       if s['island'] in topology[island]], key=lambda s: s['id'])))
-            tasks.append(dict(task_id=f'{self.run_id}:{round_number}:{island}:{digest(topology)[:12]}',
+            tasks.append(dict(task_id=f'{self.run_id}:{round_number}:{island}:{digest([topology, asdict(self.config)])[:12]}',
                               config=asdict(self.config), round=round_number, island=island,
                               snapshot=snapshot, snapshot_hash=digest(snapshot), world_hash=world_hash,
                               topology=topology))
@@ -294,11 +313,17 @@ class Game:
         next_state = dict(round=self.state['round'] + 1, next_id=self.state['next_id'],
                           speakers=sorted(speakers, key=lambda s: s['id']))
         rng = stream(self.config.seed, next_state['round'], 'demography')
+        population_counts = {i: sum(s['island'] == i for s in next_state['speakers']) for i in range(self.config.islands)}
         for speaker in next_state['speakers']:
             destinations = [i for i in topology[speaker['island']] if i != speaker['island']]
-            if destinations and rng.random() < self.config.migration:
+            if destinations and population_counts[speaker['island']] > self.config.minimum_population and rng.random() < self.config.migration:
                 origin = speaker['island']
-                speaker['island'] = rng.choice(destinations)
+                weights = [self.config.route_weights[origin][i] for i in destinations] if self.config.route_weights is not None else None
+                if weights is not None and not sum(weights):
+                    continue
+                speaker['island'] = rng.choices(destinations, weights)[0] if weights is not None else rng.choice(destinations)
+                population_counts[origin] -= 1
+                population_counts[speaker['island']] += 1
                 events.append(dict(kind='migration', speaker=speaker['id'], source=origin, destination=speaker['island']))
         # Cultural acquisition from frozen post-interaction tutors, before replacements.
         replacements = []
@@ -332,10 +357,15 @@ class Game:
         self.state = next_state
         return events, summary
 
-    def step(self, executor=None, topology=None):
-        tasks = self.tasks(topology)
-        results = list(executor.map(island_task, tasks)) if executor else [island_task(t) for t in tasks]
-        return self.apply(tasks, results)
+    def step(self, executor=None, topology=None, parameters=None):
+        original = self.config
+        self.config = replace(original, **parameters) if parameters else original
+        try:
+            tasks = self.tasks(topology)
+            results = list(executor.map(island_task, tasks)) if executor else [island_task(t) for t in tasks]
+            return self.apply(tasks, results)
+        finally:
+            self.config = original
 
 
 def validate_topology(topology, islands):

@@ -1,5 +1,6 @@
 """Read committed region summaries without interacting with or teaching agents."""
 import argparse
+from itertools import cycle
 import json
 from pathlib import Path
 
@@ -18,7 +19,7 @@ def main():
     lines=['# Roman-collapse-inspired regional experiment','',
            f"Latest committed round: **{latest['round']} / {plan['rounds']}**.",
            f"Phase: **{latest.get('geographic_phase','initialization')}**. Population: **{latest['population']}**.",'',
-           'These are artificial languages over shared concepts, not reconstructed Latin or historical Romance varieties.','',
+           'These are synthetic linguistic populations, not reconstructions of historical languages.','',
            '| Region | Speakers | Most frequent form for water | Preferred construction |',
            '| --- | ---: | --- | --- |']
     for i,name in enumerate(plan['regions']):
@@ -40,14 +41,16 @@ def main():
     import matplotlib.pyplot as plt
     figure,axes=plt.subplots(1,2,figsize=(13,5),layout='constrained')
     axes[0].plot([s['round'] for s in summaries],[s['mean_lexical_distance'] for s in summaries],color='#8e5c2e')
+    for group in plan.get('measurement_groups', {}):
+        axes[0].plot([s['round'] for s in summaries], [s.get('within_group_lexical_distance', {}).get(group) for s in summaries], label=group.replace('_', ' '))
     colors=['#d6e9f5','#f7dfd5','#d9ecd3']
     start=0
-    for phase,color in zip(plan['phases'],colors):
+    for phase,color in zip(plan['phases'],cycle(colors)):
         end=min(phase['through'],latest['round'])
         if end>start:
             axes[0].axvspan(start,end,alpha=.45,color=color,label=phase['name'].replace('_',' '))
         start=phase['through']
-    axes[0].set(xlabel='Round',ylabel='Mean lexical total variation distance',ylim=(0,1),title='Divergence from shared ancestry')
+    axes[0].set(xlabel='Round',ylabel='Mean lexical total variation distance',ylim=(0,1),title='Lexical divergence (overall and groups)')
     axes[0].legend(fontsize=8)
     audits=[s['held_out_comprehension'] for s in summaries if 'held_out_comprehension' in s]
     if audits:

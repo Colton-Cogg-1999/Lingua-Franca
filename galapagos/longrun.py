@@ -21,7 +21,8 @@ def topology_for(plan, round_number):
                 graph = [list(range(n)) for _ in range(n)]
             else:
                 graph = [[i] for i in range(n)]
-                for a, b in phase['edges']:
+                for edge in phase['edges']:
+                    a, b = edge[:2]
                     graph[a].append(b)
                     graph[b].append(a)
             return phase['name'], validate_topology(graph, n)
@@ -32,12 +33,42 @@ def validate_plan(plan):
     config = GameConfig(**plan['config'])
     if config.islands != len(plan['regions']) or plan['rounds'] < 1 or plan['diagnostic_interval'] < 1:
         raise ValueError('invalid experiment dimensions')
+    if 'calendar' in plan:
+        clock = plan['calendar']
+        if clock['ticks_per_year'] <= 0 or (clock['end_year'] - clock['start_year']) * clock['ticks_per_year'] != plan['rounds']:
+            raise ValueError('calendar must match experiment duration')
     boundaries = [p['through'] for p in plan['phases']]
     if boundaries != sorted(set(boundaries)) or boundaries[0] < 1 or boundaries[-1] != plan['rounds']:
         raise ValueError('phase boundaries must increase and end at requested rounds')
     for phase in plan['phases']:
         topology_for(plan, phase['through'])
+        from dataclasses import replace
+        replace(config, **parameters_for(plan, phase['through']))
+    from .history import validate_initialization
+    validate_initialization(plan, config)
     return config
+
+
+def parameters_for(plan, round_number):
+    phase = next(p for p in plan['phases'] if round_number <= p['through'])
+    parameters = dict(phase.get('parameters', {}))
+    allowed = {'contact', 'migration', 'repair', 'learning', 'prestige_bias', 'innovation',
+               'sound_change', 'construction_innovation', 'retention', 'friendship_bias'}
+    if set(parameters) - allowed:
+        raise ValueError('phase may change behavioral rates only')
+    if phase['edges'] != 'all' and any(len(edge) == 3 for edge in phase['edges']):
+        n = len(plan['regions'])
+        weights = [[0.0] * n for _ in range(n)]
+        for edge in phase['edges']:
+            a, b = edge[:2]
+            value = edge[2] if len(edge) == 3 else 1.0
+            if a == b or weights[a][b] or not isinstance(value, (float, int)) or value <= 0:
+                raise ValueError('invalid or repeated weighted route')
+            weights[a][b] = weights[b][a] = value
+        parameters['route_weights'] = weights
+    else:
+        parameters['route_weights'] = None
+    return parameters
 
 
 def diagnostic(game, samples=80):
@@ -98,10 +129,13 @@ class Ledger:
             raise
 
 
-def load_latest(root, config, run_id):
+def load_latest(root, config, run_id, plan=None):
     folders = sorted(p for p in (root / 'rounds').glob('[0-9]*') if p.is_dir())
     if not folders:
         game = Game(config)
+        if plan is not None:
+            from .history import seed_variation
+            seed_variation(game, plan)
         game.run_id = run_id
         return game
     folder = folders[-1]
@@ -160,14 +194,18 @@ def main():
     if plan_path.exists() and json.loads(plan_path.read_text()) != plan:
         raise ValueError('output belongs to another experiment')
     durable_json(plan_path, plan)
-    game = load_latest(root, config, run_id)
+    game = load_latest(root, config, run_id, plan)
     ledger = Ledger(args.brokers, args.topic, run_id)
     transport = RegionTransport(args.worker_url)
     policies = KubernetesPolicies()
     if game.state['round'] == 0 and not (root / 'rounds' / '000000').exists():
         event = dict(schema=2, kind='initialized', event_id=f'{run_id}:0:initial', run_id=run_id,
                      model=VERSION, round=0, plan=plan, state=game.state)
-        commit(root, game, [event], summarize(game.state, []))
+        initial_summary = summarize(game.state, [])
+        from .history import group_metrics
+        initial_summary.update(group_metrics(initial_summary, plan))
+        initial_summary['held_out_comprehension'] = diagnostic(game, samples=plan.get('diagnostic_samples', 80))
+        commit(root, game, [event], initial_summary)
     publish_pending(root, ledger)
     active_phase = None
     while game.state['round'] < plan['rounds']:
@@ -175,16 +213,17 @@ def main():
             raise RuntimeError('less than 20 GiB free; pausing before next round')
         next_round = game.state['round'] + 1
         phase, topology = topology_for(plan, next_round)
+        parameters = parameters_for(plan, next_round)
         boundary = None
         if phase != active_phase:
             policies.apply(topology)
             checks = verify(topology, args.worker_url)
             boundary = dict(kind='geography_changed', schema=2, run_id=run_id, round=next_round,
-                            event_id=f'{run_id}:{next_round}:geography', phase=phase, topology=topology, checks=checks)
+                            event_id=f'{run_id}:{next_round}:geography', phase=phase, topology=topology, checks=checks, parameters=parameters)
             active_phase = phase
             print(json.dumps(dict(status='boundaries_verified', phase=phase, next_round=next_round, checks=checks)), flush=True)
         # If tasks fail, no state is committed; Kubernetes restarts from the last durable round.
-        events, summary = game.step(transport, topology)
+        events, summary = game.step(transport, topology, parameters)
         for event in events:
             event['geographic_phase'] = phase
         for event in events:
@@ -194,10 +233,15 @@ def main():
                 raise RuntimeError('illegal cross-boundary migration')
         summary['geographic_phase'] = phase
         summary['topology'] = topology
+        summary['parameters'] = parameters
+        if 'calendar' in plan:
+            summary['calendar_year'] = plan['calendar']['start_year'] + game.state['round'] / plan['calendar']['ticks_per_year']
+        from .history import group_metrics
+        summary.update(group_metrics(summary, plan))
         if boundary:
             events.insert(0, boundary)
-        if game.state['round'] % plan['diagnostic_interval'] == 0 or boundary:
-            measurement = diagnostic(game)
+        if game.state['round'] % plan['diagnostic_interval'] == 0 or boundary or game.state['round'] in [p['through'] for p in plan['phases']]:
+            measurement = diagnostic(game, samples=plan.get('diagnostic_samples', 80))
             summary['held_out_comprehension'] = measurement
             events.insert(-1, dict(kind='comprehension_audit', schema=2, run_id=run_id, round=game.state['round'],
                                  event_id=f"{run_id}:{game.state['round']}:audit", measurement=measurement))
