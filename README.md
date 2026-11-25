@@ -1,174 +1,94 @@
 # Lingua Franca
 
-Watch a dialect form. Six towns around an imaginary Roman Mediterranean start
-with the same vocabulary. Then the empire breaks up. What happens to the word
-for *water* when most of the people you hear live in your own town?
+A speaker in Tarraco coins *pulo* for water. The first listener doesn’t recognize
+it. Fifty-nine rounds later another picks it up when the speaker points. That listener goes on to teach somebody else. By the time distant roads
+reopen, speakers are passing around *pelo*, a descendant of the same word.
 
-## Play the dialect atlas
+That happened in one of **256 artificial worlds**. Lingua Franca simulates how
+dialects form as people talk, misunderstand one another, learn, and raise a new
+cohort. Six provinces loosely mirror the western Roman world. Each world has
+**3,072 individual speakers**. They keep personal vocabularies for 24 everyday
+meanings and can recognize pronunciations they don’t use themselves.
+[Follow the recorded exchanges](docs/results/provinces/water-lineages.csv)
 
-Open **[dialects.html](docs/dialects.html)** from your checkout in a browser and
-follow the opening example for **water**. The file works offline. If you’re on GitHub, use **Download raw file**
-on that page, then open the downloaded file.
+## When the roads close
 
-Compare Roma and Genua at the founding and at generation 35. Use **Founding**,
-**During breakup**, and **After reopening** to jump through the story. Expand
-**Explore all six towns and three histories** to trace any town’s pronunciation. The three societies start with the same towns and words.
+Every world runs for 200 rounds before it branches. The people, their contacts
+so far, and everything they have learned are identical at the split. Each person
+still has one turn as a listener every round. The difference is who they hear.
 
-| Society | When the empire breaks up |
-|---|---|
-| The empire falls | Most learning becomes local. Neighboring towns still exchange words. |
-| Open roads | People keep hearing tutors from across the empire. |
-| Closed borders | Each town learns entirely from its own people. |
+| History | From round 201 through 1,400 | After round 1,400 |
+|---|---|---|
+| Empire breaks up | 3% chance of a speaker from a neighboring province | Long-distance contact resumes |
+| Open roads | 25% chance of a speaker from any other province | The same roads stay open |
+| Sealed borders | Everyone hears local speakers only | Long-distance contact resumes |
 
-The roads reopen after generation 50. Try **water** at generation **35**: in
-the fractured empire, Roma says *pesa* and Genua says *tego*. In the open-roads
-world both say *pilu*. The sounds and words are invented. The town names give
-you somewhere to follow them.
+Across **768 histories of 2,000 rounds**, the engine processed **4,404,019,200
+simulated conversations**, counting the shared beginnings once. Speakers coined
+1,102,026 words and adopted another person’s pronunciation 259,356,539 times.
 
-To grow a different world, choose another seed and open the file it generates.
+![How cross-province word recognition and shared pronunciation change as the roads close and reopen](docs/results/provinces/provinces.png)
+
+At the end of fragmentation, a listener recognized a word from another province
+**62.0%** of the time in the breakup worlds, **73.9%** with open roads, and
+**58.6%** with sealed borders. The breakup worlds scored below their open-roads
+twins in all 256 seeds. After 600 rounds of renewed contact, recognition in the
+breakup worlds recovered to **70.5%**, versus **73.6%** in the open-roads twins.
+
+These scores come from a separate listening test that samples every province
+pair equally, including pairs that could never meet during isolation. Lines show
+seed means and ribbons span the middle 80% of worlds. The model uses invented
+words and synthetic contact rates. [Rules and measurement](simulation/README.md)
+· [Results by seed](docs/results/provinces/intervals.csv.gz)
+· [Summary](docs/results/provinces/summary.json)
+
+## Follow one word
+
+The engine gives every newly coined word a lineage ID. Sound changes can alter
+the pronunciation while preserving that ID. Here are five encounters from
+lineage `2636130` in the first breakup world. It was chosen because its spread is
+particularly easy to follow.
+
+| Round | What happened to the word for water |
+|---:|---|
+| 859 | Speaker 327 coined *pulo* in Tarraco. The listener didn’t recognize it. |
+| 918 | Speaker 327 used it again. After a pointing gesture, listener 1597674 adopted it. |
+| 985 | Now speaking, 1597674 taught *pulo* to 1966319. |
+| 1,336 | A speaker from Tarraco taught the variant *pelu* to someone in neighboring Narbo. |
+| 1,504 | With distant routes open, a speaker from Tarraco taught *pelo* to 738757 in Massilia. That same speaker later passed it to someone in Neapolis in round 1,850. |
+
+The trace file includes every coinage and conversation-based adoption recorded
+for **all** new water lineages coined after the split in this example world,
+including words that failed to catch on. Local inheritance can also pass on a
+word. [Water lineages](docs/results/provinces/water-lineages.csv) ·
+[Most common words by province and round](docs/results/provinces/example-vocabulary.csv)
+
+## Run your own societies
+
+From the checkout, with Python 3.11+ and a C++17 compiler, run a small version.
+
+```sh
+python simulation/run.py --output runs/my-provinces --seeds 4 --per-town 64 --rounds 400
+```
+
+Reproduce the full experiment with the defaults. The driver builds the engine,
+runs up to four seeds at once, audits every seed, and resumes completed seeds
+when you repeat the command.
+
+```sh
+python simulation/run.py --output runs/provinces
+```
+
+To generate the figure and export the results from either run, install the
+analysis extra and pass the run directory to the reporter.
 
 ```sh
 python -m pip install -e '.[analysis]'
-python -m lingua_franca.explore --seed 911 --output runs/my-dialects.html
+python simulation/report.py --input runs/provinces --output runs/provinces/report
 ```
 
-<details>
-<summary>Earlier experiments, results, and reproduction instructions</summary>
+[Engine](simulation/provinces.cpp) · [Contact matrices for all 256 worlds](docs/results/provinces/routes.csv.gz)
 
-## Understanding neighbors after reconnection
-
-When communities heard more foreign speech but adopted only a quarter of foreign
-tutors’ forms, word recognition rose from **14.4% to 34.6%** over 30 generations.
-Listeners using only their own spoken vocabulary scored **17.6%** on those same
-utterances. Pronunciations remained distinct across regions even among words
-that shared a root. [Follow-up results and figure](docs/results/receptive-vocabulary/report.md)
-
-## Roman fragmentation pilot
-
-Across 24 matched worlds, listeners recognized **14.4%** of words from another
-region after 40 generations of fragmented contact, versus **43.7%** under
-sustained contact. In the fragmented worlds, **76.5%** of same-meaning word
-pairs still shared a root. After 30 generations of renewed contact, the
-recognition gap narrowed to 0.75 percentage points. The model tests a contact
-mechanism suggested by Roman history. Its rates are synthetic.
-
-[Results and figure](docs/results/contact-pilot/report.md) ·
-[Experimental design](docs/results/contact-pilot/design.md)
-
-## Earlier trade and communication study
-
-How does learning what to say affect trade and shared vocabulary? Lingua Franca is a
-Python simulation of six communities that barter for goods. A buyer requests a good
-using a word it knows. The seller interprets the request using its own vocabulary and
-available stock. Pointing can resolve a misunderstanding, at a cost to the buyer.
-
-### Findings
-
-Across three matched seeds, agents that learned which speaking strategy to use
-completed **4.40% of attempted trades**, compared with **3.72%** for agents choosing
-a strategy at random. Both groups could learn words. The adaptive agents also had
-fewer shortages (58.96% versus 62.66%) and ended with more similar regional
-vocabularies (mean lexical distance 0.3715 versus 0.6687). Average buyer reward
-improved but remained negative after communication costs.
-
-Giving all adaptive agents the same effective openness yielded a trade rate of
-4.47% and a final lexical distance of 0.2900. Varying openness across agents gave a
-higher mean reward in only one of the three matched seeds. The evidence concerns
-these simulated communities. Lexical similarity measures shared word use, and
-first-pass success also depends on whether the seller has the item in stock.
-
-The completed study covers nine runs, 216,000 rounds, and 51,840,000 encounters.
-The report includes the paired differences, contact phases, and ledger audits.
-[Study report](docs/results/lingua-franca/report.md) ·
-[Metrics by run](docs/results/lingua-franca/metrics.json) ·
-[Individual trajectories](docs/results/lingua-franca/trajectories.png)
-
-### Run one experiment
-
-From the checkout, run this with Python 3.11 or newer. The simulator uses the
-standard library. Its disk-space guard requires 20 GiB free on the output volume.
-
-```sh
-python -m lingua_franca.society --output runs/example --rounds 100 --population 4 --seed 476
-```
-
-Here, `--population 4` means four agents per community, or 24 total. Every round
-gives each agent two opportunities to trade. SQLite commits the encounters,
-summary, and checkpoint together. To resume, repeat the command with the same
-settings and model. Give each concurrent writer its own output directory.
-
-Inspect trade success and net reward by speaking strategy using the SQLite CLI.
-
-```sh
-sqlite3 -readonly runs/example/ledger.sqlite \
-  'SELECT strategy, count(*), avg(traded), avg(reward) FROM events GROUP BY strategy;'
-```
-
-### Reproduce the study
-
-The defaults run three conditions for each seed (476, 911, and 2026), with 20
-agents per community and 24,000 rounds per run. The saved ledgers for the
-completed study occupy about 4.1 GiB. Install the analysis extra to generate the figure.
-
-```sh
-python -m venv .venv
-. .venv/bin/activate
-python -m pip install -e '.[analysis]'
-python -m lingua_franca.study --output runs/full-study
-```
-
-The runner writes logs, a manifest, and progress to the output directory. After
-the last run it audits the ledgers and writes `report/report.md`, `metrics.json`,
-and the figure in that report directory. To regenerate the report from saved
-ledgers, point the reporter at the directory containing `manifest.json`.
-
-```sh
-python -m lingua_franca.report --root runs/full-study --output runs/full-study/report
-```
-
-On Linux, `tools/societyctl start` runs the study as a user service capped at one
-CPU core and 2 GiB of memory. It uses the checkout’s `.venv` and writes under
-`runtime/lingua-franca-study/`. Use `status`, `logs`, or `stop` to manage it.
-
-### How the model works
-
-- **Trade.** Agents specialize in production, consume six goods, and face a rotating
-  drought. A one-for-one barter goes through when both parties gain inventory
-  utility. The buyer pays communication effort even when a trade fails.
-- **Communication.** The buyer can use a familiar word, reuse a word learned from
-  another region, point explicitly, or coin a word. Successful interpretation can
-  teach the seller a word even if the barter falls through.
-- **Learning.** Adaptive agents learn a separate value for each strategy in local
-  and cross-region encounters. The reward is immediate buyer utility gain less
-  effort. The random-strategy baseline still learns words and partner preferences.
-- **Contact and succession.** Regions pass through connected, fragmented, trade-route,
-  mass-contact, and dense-contact phases. During succession, agents inherit physical
-  goods and learn from three local tutors. Openness affects the cost of unfamiliar
-  strategies, uptake of words, and the chance of repair.
-
-Three communities start with variants of a shared vocabulary. Each of the other
-three has its own starting vocabulary. Agents explore strategies on 12% of adaptive
-decisions and update their values at a learning rate of 0.08. Each round gives an
-agent a 0.15% chance of cultural succession. A drought shifts to the next good
-every 600 rounds.
-
-| Phase | Share of rounds | Chance of a cross-region encounter | Permitted contacts |
-|---|---:|---:|---|
-| Connected | 20% | 12% | All region pairs |
-| Fragmented | 45% | 1% where linked | Regions 0–1 and 3–4 can trade. Regions 2 and 5 are isolated. |
-| Trade routes | 25% | 8% | Neighbors along the chain from region 0 to region 5 |
-| Mass contact | 8% | 20% | All region pairs |
-| Dense contact | 2% | 45% | All region pairs |
-
-The study compares strategy learning with a random policy. Establishing that
-learning is *necessary* would require another baseline, such as always using a
-familiar word. Isolating the effect of fragmentation would require a matched
-continuous-contact control.
-
-</details>
-
-## Tests
-
-```sh
-python -m unittest discover -s tests
-```
+Earlier experiments studied [barter and strategy learning](docs/results/lingua-franca/report.md),
+[regional word transmission](docs/results/contact-pilot/report.md), and
+[learning to understand a neighbor’s pronunciation](docs/results/receptive-vocabulary/report.md).
