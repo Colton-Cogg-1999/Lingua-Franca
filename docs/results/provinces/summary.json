@@ -1,0 +1,63 @@
+{
+  "model_sha256": "1120fc66f7fa07e4fbc9d72d586c8394187dfe1df0717edebe79bb6a284352f1",
+  "seeds": 256,
+  "per_town": 512,
+  "rounds": 2000,
+  "conversations": 4404019200,
+  "shared_rounds": 200,
+  "reopen_after": 1400,
+  "totals": {
+    "conversations": 4404019200,
+    "understood": 3486067257,
+    "remote": 657466922,
+    "repairs": 504862538,
+    "adoptions": 259356539,
+    "coins": 1102026,
+    "births": 8809587
+  },
+  "end_of_common": {
+    "recognition": 0.8514117770724826,
+    "shared_form": 0.7526719835069444,
+    "local_recognition": 0.8938564724392362
+  },
+  "endpoints": {
+    "1400": {
+      "breakup": {
+        "recognition": 0.6200651380750868,
+        "shared_form": 0.4908806694878472,
+        "local_recognition": 0.7071126302083334
+      },
+      "open": {
+        "recognition": 0.739434814453125,
+        "shared_form": 0.6144497341579861,
+        "local_recognition": 0.7876917521158854
+      },
+      "sealed": {
+        "recognition": 0.5857738918728299,
+        "shared_form": 0.4588911268446181,
+        "local_recognition": 0.6883180406358507
+      }
+    },
+    "2000": {
+      "breakup": {
+        "recognition": 0.7049407958984375,
+        "shared_form": 0.5780766805013021,
+        "local_recognition": 0.7545132107204862
+      },
+      "open": {
+        "recognition": 0.7358566284179687,
+        "shared_form": 0.6108469645182292,
+        "local_recognition": 0.7851435343424479
+      },
+      "sealed": {
+        "recognition": 0.6903430514865452,
+        "shared_form": 0.5629540337456598,
+        "local_recognition": 0.740372551812066
+      }
+    }
+  },
+  "breakup_minus_open_at_reopening": {
+    "mean": -0.11936967637803819,
+    "negative_seeds": 256
+  }
+}

@@ -1,63 +1,94 @@
 # Lingua Franca
 
-If speakers start with the same language, do local dialects emerge when their
-communities stop talking to one another? What happens when contact returns?
+A speaker in Tarraco coins *pulo* for water. The first listener doesn’t recognize
+it. Fifty-nine rounds later another picks it up when the speaker points. That listener goes on to teach somebody else. By the time distant roads
+reopen, speakers are passing around *pelo*, a descendant of the same word.
 
-**In this run, some local words emerged, but the communities stayed mutually
-intelligible.** At the end of isolation, speakers understood 98.85% of requests
-from other groups on the first attempt, compared with 98.99% under sustained
-contact. After reconnection the scores were 99.14% and 99.18%. Lexical divergence
-was greater under isolation in four of eight paired seeds. The notebook shows
-all eight, including the cases that went the other way. [Executed results notebook](results.ipynb)
+That happened in one of **256 artificial worlds**. Lingua Franca simulates how
+dialects form as people talk, misunderstand one another, learn, and raise a new
+cohort. Six provinces loosely mirror the western Roman world. Each world has
+**3,072 individual speakers**. They keep personal vocabularies for 24 everyday
+meanings and can recognize pronunciations they don’t use themselves.
+[Follow the recorded exchanges](docs/results/provinces/water-lineages.csv)
 
-## The experiment
+## When the roads close
 
-Three groups of twelve speakers start with the same twelve nouns, the actions
-*give* and *show*, and verb–object order (*give taku* means “give stone”).
-Speakers choose words and word order from their own learned preferences. They
-occasionally coin a noun or reverse the order. A listener tries to interpret
-the request; pointing and demonstrating the action can repair a misunderstanding.
-A grounded encounter reinforces the word and construction. A speaker can later
-accommodate someone by using a form heard from that person's group. Successors
-learn from a finite sample of three local tutors.
+Every world runs for 200 rounds before it branches. The people, their contacts
+so far, and everything they have learned are identical at the split. Each person
+still has one turn as a listener every round. The difference is who they hear.
 
-After 20 shared rounds, each seed's population is copied. In the control, each
-encounter has a 25% chance of drawing a speaker from another group. In the
-other copy, that chance drops to zero for 160 rounds, then returns to 25% for
-80 rounds. Each listener has four encounters per round in both copies. All
-groups use the same innovation and learning rules.
+| History | From round 201 through 1,400 | After round 1,400 |
+|---|---|---|
+| Empire breaks up | 3% chance of a speaker from a neighboring province | Long-distance contact resumes |
+| Open roads | 25% chance of a speaker from any other province | The same roads stay open |
+| Sealed borders | Everyone hears local speakers only | Long-distance contact resumes |
 
-At the split and both endpoints, we compare group word-use and word-order
-distributions. A separate listening test samples every cross-group direction
-equally, even during isolation. It scores the intended action **and** object on
-the first attempt. Test encounters never change a speaker's knowledge.
+Across **768 histories of 2,000 rounds**, the engine processed **4,404,019,200
+simulated conversations**, counting the shared beginnings once. Speakers coined
+1,102,026 words and adopted another person’s pronunciation 259,356,539 times.
 
-For example, one group in the first seed learned *sesetu* for salt alongside
-the founding *sala*. At the end of isolation, its speakers had a 10.5% average
-chance of saying *sesetu*; nobody in the other two groups had it in their
-learned vocabulary. After reconnection its share was 13.7% in the first group
-and 4.4% in the second. Another local word, *sekumi* for cup, faded from 12.3%
-to 0.9% in its home group. These were the two most regionally concentrated
-variants in that seed, selected to illustrate what the aggregate measures count.
+![How cross-province word recognition and shared pronunciation change as the roads close and reopen](docs/results/provinces/provinces.png)
 
-## Reproduce it
+At the end of fragmentation, a listener recognized a word from another province
+**62.0%** of the time in the breakup worlds, **73.9%** with open roads, and
+**58.6%** with sealed borders. The breakup worlds scored below their open-roads
+twins in all 256 seeds. After 600 rounds of renewed contact, recognition in the
+breakup worlds recovered to **70.5%**, versus **73.6%** in the open-roads twins.
 
-[simulation.py](simulation.py) uses only the Python standard library.
-[config.json](config.json) contains the rates, phase lengths, and seeds used for
-the published run. Open [results.ipynb](results.ipynb) in Jupyter with a Python 3
-kernel and run all cells from the repository root. The saved notebook also reads
-directly on GitHub.
+These scores come from a separate listening test that samples every province
+pair equally, including pairs that could never meet during isolation. Lines show
+seed means and ribbons span the middle 80% of worlds. The model uses invented
+words and synthetic contact rates. [Rules and measurement](simulation/README.md)
+· [Results by seed](docs/results/provinces/intervals.csv.gz)
+· [Summary](docs/results/provinces/summary.json)
 
-## Recovery from the original implementation
+## Follow one word
 
-The core comes from the weighted production, interpretation, learning, memory
-decay and three-tutor acquisition rules in the original communication game.
-The only audience-specific rule comes from the original trade model: remember
-a grounded word heard from a group and sometimes reuse it with that audience.
-Here a fixed probability selects accommodation. Partner choice is uniform
-within the selected local or remote pool. Individuals stay in their group.
-The recovery omits prestige weighting, economic rewards, regional starting
-variants and island-specific sound substitutions.
-[Original game](https://github.com/Colton-Cogg-1999/Lingua-Franca/blob/cfc6471/galapagos/game.py) ·
-[Original accommodation rule](https://github.com/Colton-Cogg-1999/Lingua-Franca/blob/cfc6471/galapagos/society.py#L98-L102) ·
-[Archived pre-recovery project](https://github.com/Colton-Cogg-1999/Lingua-Franca/tree/archive/before-recovery)
+The engine gives every newly coined word a lineage ID. Sound changes can alter
+the pronunciation while preserving that ID. Here are five encounters from
+lineage `2636130` in the first breakup world. It was chosen because its spread is
+particularly easy to follow.
+
+| Round | What happened to the word for water |
+|---:|---|
+| 859 | Speaker 327 coined *pulo* in Tarraco. The listener didn’t recognize it. |
+| 918 | Speaker 327 used it again. After a pointing gesture, listener 1597674 adopted it. |
+| 985 | Now speaking, 1597674 taught *pulo* to 1966319. |
+| 1,336 | A speaker from Tarraco taught the variant *pelu* to someone in neighboring Narbo. |
+| 1,504 | With distant routes open, a speaker from Tarraco taught *pelo* to 738757 in Massilia. That same speaker later passed it to someone in Neapolis in round 1,850. |
+
+The trace file includes every coinage and conversation-based adoption recorded
+for **all** new water lineages coined after the split in this example world,
+including words that failed to catch on. Local inheritance can also pass on a
+word. [Water lineages](docs/results/provinces/water-lineages.csv) ·
+[Most common words by province and round](docs/results/provinces/example-vocabulary.csv)
+
+## Run your own societies
+
+From the checkout, with Python 3.11+ and a C++17 compiler, run a small version.
+
+```sh
+python simulation/run.py --output runs/my-provinces --seeds 4 --per-town 64 --rounds 400
+```
+
+Reproduce the full experiment with the defaults. The driver builds the engine,
+runs up to four seeds at once, audits every seed, and resumes completed seeds
+when you repeat the command.
+
+```sh
+python simulation/run.py --output runs/provinces
+```
+
+To generate the figure and export the results from either run, install the
+analysis extra and pass the run directory to the reporter.
+
+```sh
+python -m pip install -e '.[analysis]'
+python simulation/report.py --input runs/provinces --output runs/provinces/report
+```
+
+[Engine](simulation/provinces.cpp) · [Contact matrices for all 256 worlds](docs/results/provinces/routes.csv.gz)
+
+Earlier experiments studied [barter and strategy learning](docs/results/lingua-franca/report.md),
+[regional word transmission](docs/results/contact-pilot/report.md), and
+[learning to understand a neighbor’s pronunciation](docs/results/receptive-vocabulary/report.md).
