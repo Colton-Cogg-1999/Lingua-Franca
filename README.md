@@ -4,6 +4,14 @@ How much do regional languages diverge when long-distance contact weakens, and
 what survives when communities reconnect? Lingua Franca explores this question
 using paired simulations of communities with a shared ancestral vocabulary.
 
+## Understanding neighbors after reconnection
+
+When communities heard more foreign speech but adopted only a quarter of foreign
+tutors’ forms, word recognition rose from **14.4% to 34.6%** over 30 generations.
+Listeners using only their own spoken vocabulary scored **17.6%** on those same
+utterances. Pronunciations remained distinct across regions even among words
+that shared a root. [Follow-up results and figure](docs/results/receptive-vocabulary/report.md)
+
 ## Roman fragmentation pilot
 
 Across 24 matched worlds, listeners recognized **14.4%** of words from another
