@@ -1,8 +1,38 @@
 # Lingua Franca
 
-How much do regional languages diverge when long-distance contact weakens, and
-what survives when communities reconnect? Lingua Franca explores this question
-using paired simulations of communities with a shared ancestral vocabulary.
+Watch a dialect form. Six towns around an imaginary Roman Mediterranean start
+with the same vocabulary. Then the empire breaks up. What happens to the word
+for *water* when most of the people you hear live in your own town?
+
+## Play the dialect atlas
+
+Open **[dialects.html](docs/dialects.html)** from your checkout in a browser and
+press **Play**. The file works offline. If you’re on GitHub, use **Download raw file**
+on that page, then open the downloaded file.
+
+Pick a word, drag through the generations, and click any town’s pronunciation
+to follow its history. The three societies start with the same towns and words.
+
+| Society | When the empire breaks up |
+|---|---|
+| The empire falls | Most learning becomes local. Neighboring towns still exchange words. |
+| Open roads | People keep hearing tutors from across the empire. |
+| Closed borders | Each town learns entirely from its own people. |
+
+The roads reopen after generation 50. Try **water** at generation **35**: in
+the fractured empire, Roma says *pesa* and Genua says *tego*. In the open-roads
+world both say *pilu*. The sounds and words are invented. The town names give
+you somewhere to follow them.
+
+To grow a different world, choose another seed and open the file it generates.
+
+```sh
+python -m pip install -e '.[analysis]'
+python -m lingua_franca.explore --seed 911 --output runs/my-dialects.html
+```
+
+<details>
+<summary>Earlier experiments, results, and reproduction instructions</summary>
 
 ## Understanding neighbors after reconnection
 
@@ -133,6 +163,8 @@ The study compares strategy learning with a random policy. Establishing that
 learning is *necessary* would require another baseline, such as always using a
 familiar word. Isolating the effect of fragmentation would require a matched
 continuous-contact control.
+
+</details>
 
 ## Tests
 

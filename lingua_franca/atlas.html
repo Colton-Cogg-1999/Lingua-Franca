@@ -1,0 +1,147 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dialect atlas · Lingua Franca</title>
+<style>
+:root{color-scheme:light;--paper:#f7f3e9;--ink:#182e2b;--mute:#51655e;--line:#c7cec0;--sea:#133d3a;--brick:#8e3a23;--wash:#e6eddf}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font:16px/1.5 "Source Sans 3",system-ui,sans-serif}
+main{max-width:1050px;margin:auto;padding:0 clamp(14px,4vw,54px) 42px}
+header{background:var(--sea);color:#fff9e8;border-bottom:5px solid #c48158}
+header>div{max-width:1050px;margin:auto;padding:26px clamp(14px,4vw,54px) 32px}
+h1,h2,strong.word,.form{font-family:"Baskervville",Georgia,serif;font-weight:500}
+h1{font-size:clamp(38px,6vw,62px);line-height:1.05;margin:0 0 8px;letter-spacing:-.04em}
+header p{margin:0;max-width:68ch;color:#ebeadc} h2{font-size:25px;margin:0;line-height:1.2}
+.controls{display:grid;grid-template-columns:auto auto minmax(0,1fr);align-items:end;gap:20px;padding:24px 0 16px}
+label{display:block;color:var(--mute);font-size:.86rem;font-weight:650}
+select,button,input{font:inherit}
+select,button{border:1px solid #8c9c91;border-radius:5px;background:#fffdf6;color:var(--ink)}
+select,.play{min-height:42px;padding:5px 14px}
+.play{background:var(--sea);color:white;min-width:82px;cursor:pointer}
+input[type=range]{width:100%;accent-color:var(--sea);margin:10px 0 7px}
+.timeline{display:flex;align-items:baseline;justify-content:space-between;gap:7px;flex-wrap:wrap}
+.jump{padding:3px 7px;margin-left:8px;color:var(--sea);font-size:.8rem;cursor:pointer}
+#phase{color:var(--brick);font-weight:650;font-size:.88rem}
+table{border-collapse:collapse;width:100%;table-layout:fixed}
+th,td{text-align:left;border-bottom:1px solid var(--line);padding:7px 6px}
+thead th{color:var(--mute);font-size:.9rem;vertical-align:bottom;line-height:1.2}
+thead th small{display:block;font-weight:400;margin-top:5px}
+tbody th{font-weight:500}table .form{width:100%;text-align:left;font-size:clamp(19px,3.5vw,29px);cursor:pointer;background:transparent;border:1px solid transparent;padding:2px 5px;line-height:1.3}
+.form:hover{background:var(--wash)}.form[aria-pressed=true]{background:var(--sea);color:#fff}
+tbody .focus-col{background:#eee7d7}thead th.focus-col{color:var(--brick)}
+section{margin-top:26px}
+#trail{display:flex;list-style:none;gap:8px 16px;flex-wrap:wrap;padding:0;margin:16px 0}
+#trail li{border-left:2px solid #a0b6a0;padding-left:8px}#trail li:last-child{border-color:var(--brick)}
+#trail small{display:block;font-size:.75rem;color:var(--mute)}
+.word{font-size:1.22rem}
+#origin,#help{margin:8px 0;color:var(--mute);font-size:.92rem}
+footer{margin-top:28px;padding-top:12px;border-top:1px solid var(--line);color:var(--mute);font-size:.84rem}
+:focus-visible{outline:3px solid #b75c23;outline-offset:2px}
+@media(max-width:580px){.controls{grid-template-columns:1fr auto;gap:10px} .slider{grid-column:1/-1}
+th,td{padding:6px 2px} thead th{font-size:.78rem} thead th small{font-size:.72rem}
+tbody th{font-size:.8rem} table .form{min-height:42px;padding:2px 3px} #help{font-size:.85rem}}
+</style>
+</head>
+<body>
+<header><div><h1>Lingua Franca</h1>
+<p>Six towns inherit one language. Follow a word as the empire’s roads empty, or see what happens if the towns keep talking.</p></div></header>
+<main>
+<div class="controls">
+<div><label for="meaning">Follow a word</label><select id="meaning"></select></div>
+<button class="play" id="play" type="button">Play</button>
+<div class="slider"><div class="timeline"><label for="generation">Generation <output id="number" for="generation"></output></label><span><span id="phase"></span><button type="button" class="jump" id="jump"></button></span></div>
+<input id="generation" type="range" min="0" value="0"></div></div>
+<table aria-label="Regional forms of the selected word across three societies">
+<thead><tr><th scope="col">Town</th>
+<th scope="col" class="focus-col">The empire falls<small id="fragmented-rule"></small></th>
+<th scope="col">Open roads<small id="sustained-rule"></small></th>
+<th scope="col">Closed borders<small id="isolated-rule"></small></th></tr></thead>
+<tbody id="towns"></tbody></table>
+<p id="help">Select a pronunciation to trace its history.</p>
+<section><h2 id="trail-title"></h2><ol id="trail"></ol><p id="origin"></p></section>
+<footer id="about"></footer>
+</main>
+<script type="application/json" id="world"><!--WORLD--></script>
+<script>
+"use strict";
+const data = JSON.parse(document.getElementById("world").textContent);
+const towns = ["Tarraco","Narbo","Massilia","Genua","Roma","Neapolis"];
+const branches = ["fragmented","sustained","isolated"];
+const names = ["The empire falls","Open roads","Closed borders"];
+const get = id => document.getElementById(id);
+const meaning = get("meaning"), slider = get("generation"), play = get("play");
+const cells = [];
+let town = 4, society = 0, timer = null;
+data.meanings.forEach((word,index) => meaning.add(new Option(word,index)));
+slider.max = data.end;
+function formAt(g,r,b,m) {
+  const snapshot = g <= data.split ? data.common[g] : data.histories[branches[b]][g-data.split-1];
+  return data.words[snapshot[r][m]];
+}
+function render() {
+  const g = Number(slider.value), m = Number(meaning.value);
+  const divided = g > data.split && g <= data.reconnect;
+  get("number").textContent = g + " / " + data.end;
+  get("phase").textContent = g <= data.split ? "Under one empire" : divided ? "After the fall" : "Routes reopen";
+  get("jump").textContent = g <= data.split ? "Jump to breakup" : divided ? "Jump to reopening" : "Back to founding";
+  get("fragmented-rule").textContent = divided ? "Occasional visits to neighbors" : "Towns mix freely";
+  get("sustained-rule").textContent = "Towns mix freely";
+  get("isolated-rule").textContent = divided ? "Local tutors only" : "Towns mix freely";
+  for (const cell of cells) {
+    const [word] = formAt(g,cell.region,cell.branch,m);
+    cell.button.textContent = word;
+    cell.button.setAttribute("aria-label", towns[cell.region] + ", " + names[cell.branch] + ", " + word);
+    cell.button.setAttribute("aria-pressed", cell.region === town && cell.branch === society);
+  }
+  get("trail-title").textContent = towns[town] + " · " + data.meanings[m] + " · " + names[society];
+  const trail = get("trail");
+  trail.replaceChildren();
+  let previous;
+  for (let t = 0; t <= g; t++) {
+    const entry = formAt(t,town,society,m);
+    if (entry === previous) continue;
+    const item = document.createElement("li"), when = document.createElement("small"), word = document.createElement("strong");
+    when.textContent = "Gen " + t; word.textContent = entry[0]; word.className = "word";
+    item.append(when,word); trail.append(item); previous = entry;
+  }
+  const [word, root] = previous, birth = Math.floor((root-data.meanings.length)/data.meanings.length);
+  const source = root < data.meanings.length ? "descends from the founding word for " + data.meanings[m] :
+    "comes from a word coined in " + towns[birth % towns.length] + " in generation " + (1+Math.floor(birth/towns.length));
+  get("origin").textContent = "Here, “" + word + "” " + source + ".";
+}
+towns.forEach((name,region) => {
+  const row = get("towns").insertRow(), heading = document.createElement("th");
+  heading.scope = "row"; heading.textContent = name; row.append(heading);
+  branches.forEach((_,branch) => {
+    const td = row.insertCell(), button = document.createElement("button");
+    if (branch === 0) td.className = "focus-col";
+    button.type = "button"; button.className = "form";
+    button.addEventListener("click", () => { town = region; society = branch; render(); });
+    td.append(button); cells.push({button,region,branch});
+  });
+});
+function stop() {
+  clearInterval(timer); timer = null; play.textContent = Number(slider.value) === data.end ? "Replay" : "Play";
+}
+play.addEventListener("click", () => {
+  if (timer !== null) { stop(); return; }
+  if (Number(slider.value) === data.end) slider.value = 0;
+  play.textContent = "Pause"; render();
+  timer = setInterval(() => {
+    slider.value = Number(slider.value) + 1; render();
+    if (Number(slider.value) === data.end) stop();
+  }, 520);
+});
+slider.addEventListener("input", () => { stop(); render(); });
+get("jump").addEventListener("click", () => {
+  const g = Number(slider.value);
+  slider.value = g <= data.split ? data.split + 1 : g <= data.reconnect ? data.reconnect + 1 : 0;
+  stop(); render();
+});
+meaning.addEventListener("change", render);
+get("about").textContent = "World " + data.seed + " · Invented speech in Roman-inspired towns. Each generation learns from tutors. Local sound shifts can change several words together, and new words can spread between towns.";
+render();
+</script>
+</body></html>
