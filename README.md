@@ -1,139 +1,115 @@
 # Lingua Franca
 
-A reproducible artificial-society laboratory for studying how trade incentives,
-cultural attitudes, isolation, and reinforcement learning interact with shared vocabulary.
+How does learning what to say affect trade and shared vocabulary? Lingua Franca is a
+Python simulation of six communities that barter for goods. A buyer requests a good
+using a word it knows. The seller interprets the request using its own vocabulary and
+available stock. Pointing can resolve a misunderstanding, at a cost to the buyer.
 
-**Current architecture: Python + SQLite. No Redpanda, Kubernetes, Docker, GPU, API key,
-or LLM is required.** Each run is a single process. Geographic separation is an explicit
-contact graph, checked against the recorded encounters.
+## Findings
 
-These are experiments on synthetic agents. They do not establish facts about human
-nature, actual cultures, or the history of Romance languages.
+Across three matched seeds, agents that learned which speaking strategy to use
+completed **4.40% of attempted trades**, compared with **3.72%** for agents choosing
+a strategy at random. Both groups could learn words. The adaptive agents also had
+fewer shortages (58.96% versus 62.66%) and ended with more similar regional
+vocabularies (mean lexical distance 0.3715 versus 0.6687). Average buyer reward
+improved but remained negative after communication costs.
 
-## What agents do
+Giving all adaptive agents the same effective openness yielded a trade rate of
+4.47% and a final lexical distance of 0.2900. Varying openness across agents gave a
+higher mean reward in only one of the three matched seeds. The evidence concerns
+these simulated communities. Lexical similarity measures shared word use, and
+first-pass success also depends on whether the seller has the item in stock.
 
-Six communities produce and consume grain, water, timber, ore, cloth, and medicine.
-Each agent attempts two one-for-one barters per round. Both traders must benefit from
-the exchange; communication effort is charged separately to the buyer. Regional
-specialization and a rotating drought create reasons to exchange goods.
+The completed study covers nine runs, 216,000 rounds, and 51,840,000 encounters.
+The report includes the paired differences, contact phases, and ledger audits.
+[Study report](docs/results/lingua-franca/report.md) ·
+[Metrics by run](docs/results/lingua-franca/metrics.json) ·
+[Individual trajectories](docs/results/lingua-franca/trajectories.png)
 
-Agents request goods using learned words. Listeners interpret those words from their
-own vocabulary. Pointing can repair misunderstandings. Agents cannot read each other's
-private dictionaries. Four speaking strategies compete:
+## Run one experiment
 
-- **Conventional:** use a word from the speaker's own lexicon.
-- **Accommodate:** use a regional word previously heard in a successful encounter.
-- **Clarify:** pay for explicit pointing to communicate the request.
-- **Innovate:** coin a word that may or may not be learned by the listener.
-
-Each agent uses a contextual bandit with separate local and remote strategy values.
-Reward is the buyer's inventory-utility gain minus communication effort. Vocabulary
-learning and trading-partner preferences are separate from strategy learning. Attitudes
-toward change affect learning, repair, and the effort of using unfamiliar conventions.
-Cultural succession replaces language and strategy knowledge through three local tutors
-while retaining physical resources. There is no automatic reward for novelty.
-
-```mermaid
-flowchart LR
-    P[Production and consumption] --> E[Choose partner on allowed contact graph]
-    E --> S[Choose speaking strategy]
-    S --> I[Private lexicon interpretation and optional pointing]
-    I --> T[Mutually beneficial barter]
-    T --> R[Utility gain minus communication cost]
-    R --> L[Update strategy values, vocabulary, and partner preference]
-    L --> C[Cultural succession]
-    C --> D[(SQLite: events + summary + checkpoint)]
-    D --> P
-```
-
-## Run a quick experiment
-
-Python 3.11+; the simulator has no third-party dependencies.
+From the checkout, run this with Python 3.11 or newer. The simulator uses the
+standard library. Its disk-space guard requires 20 GiB free on the output volume.
 
 ```sh
-python -m galapagos.society --output runs/example --rounds 1000 --population 20 --seed 476
+python -m lingua_franca.society --output runs/example --rounds 100 --population 4 --seed 476
 ```
 
-Re-running the identical command resumes from the last committed round. Changing the
-model source or configuration causes a mismatch error instead of silently mixing models.
-Stop with Ctrl+C; SQLite commits each round's events, summary, and checkpoint atomically.
-Do not run two writers against the same output directory.
+Here, `--population 4` means four agents per community, or 24 total. Every round
+gives each agent two opportunities to trade. SQLite commits the encounters,
+summary, and checkpoint together. To resume, repeat the command with the same
+settings and model. Give each concurrent writer its own output directory.
 
-## Run the complete study
-
-```sh
-python -m pip install -e '.[analysis]'
-python -m galapagos.society_study --output runs/full-study
-```
-
-Nine sequential runs: three seeds (476, 911, 2026), three conditions, 24,000 rounds each,
-120 agents, and **51,840,000 encounters** in total. Conditions compare adaptive strategies,
-uniform-random strategies, and adaptive strategies with uniform effective cultural
-openness. Fixed strategies still permit vocabulary learning and partner preferences.
-The study produces an audited report and plots under `runs/full-study/report/`.
-Raw event ledgers stay local; plan for several GB of disk space.
-
-The contact timeline is connected (20%), fragmented (45%), sparse trade routes (25%),
-mass contact (8%), and dense contact (2%). During fragmentation, two regions are completely
-isolated and two pairs retain sparse links. Rounds are not historical years.
-
-On the original workstation, the authorized full run uses a user service capped at
-one CPU core and 2 GiB of memory. `tools/societyctl status`, `logs`, `stop`, and `start`
-inspect, stop, or resume it. The CPU cap applies to the whole service, including analysis.
-A source/configuration-locked checkpoint supports recovery after interruption. The
-transient service does not automatically restart after a reboot; use `start` to resume.
-
-## Results and inspection
-
-The full-study report is generated **after every run finishes**:
-
-- [Full report](docs/results/lingua-franca/report.md)
-- [Machine-readable metrics and audit checks](docs/results/lingua-franca/metrics.json)
-- [Individual-seed trajectories](docs/results/lingua-franca/trajectories.png)
-
-Until completion, those files may not exist. Status is in the study's `study.json` and
-each run's `status.json`; the SQLite checkpoint is authoritative between status updates.
-The report publishes all seeds, economic and linguistic outcomes, paired comparisons,
-null or unfavorable results, and implementation limitations. It checks event completeness,
-resource balance, legal contact pairs, and consistency between summaries and events.
-
-Example read-only ledger query:
+Inspect trade success and net reward by speaking strategy using the SQLite CLI.
 
 ```sh
 sqlite3 -readonly runs/example/ledger.sqlite \
-  'SELECT strategy,count(*),avg(traded),avg(reward) FROM events GROUP BY strategy;'
+  'SELECT strategy, count(*), avg(traded), avg(reward) FROM events GROUP BY strategy;'
 ```
 
-For custom analyses, `events` contains every request, strategy, first-pass success,
-repair use, grounded interpretation, trade result, reward, and each trader's utility gain.
-`first_success` requires stock availability as well as comprehension. `repair_used`
-includes explicit clarification even when the requested good is unavailable; `grounded`
-records successful interpretation with stock. Neither is a pure language proficiency test.
+## Reproduce the study
 
-## Validation
+The defaults run three conditions for each seed (476, 911, and 2026), with 20
+agents per community and 24,000 rounds per run. The saved ledgers for the
+completed study occupy about 4.1 GiB. Install the analysis extra to generate the figure.
+
+```sh
+python -m venv .venv
+. .venv/bin/activate
+python -m pip install -e '.[analysis]'
+python -m lingua_franca.study --output runs/full-study
+```
+
+The runner writes logs, a manifest, and progress to the output directory. After
+the last run it audits the ledgers and writes `report/report.md`, `metrics.json`,
+and the figure in that report directory. To regenerate the report from saved
+ledgers, point the reporter at the directory containing `manifest.json`.
+
+```sh
+python -m lingua_franca.report --root runs/full-study --output runs/full-study/report
+```
+
+On Linux, `tools/societyctl start` runs the study as a user service capped at one
+CPU core and 2 GiB of memory. It uses the checkout’s `.venv` and writes under
+`runtime/lingua-franca-study/`. Use `status`, `logs`, or `stop` to manage it.
+
+## How the model works
+
+- **Trade.** Agents specialize in production, consume six goods, and face a rotating
+  drought. A one-for-one barter goes through when both parties gain inventory
+  utility. The buyer pays communication effort even when a trade fails.
+- **Communication.** The buyer can use a familiar word, reuse a word learned from
+  another region, point explicitly, or coin a word. Successful interpretation can
+  teach the seller a word even if the barter falls through.
+- **Learning.** Adaptive agents learn a separate value for each strategy in local
+  and cross-region encounters. The reward is immediate buyer utility gain less
+  effort. The random-strategy baseline still learns words and partner preferences.
+- **Contact and succession.** Regions pass through connected, fragmented, trade-route,
+  mass-contact, and dense-contact phases. During succession, agents inherit physical
+  goods and learn from three local tutors. Openness affects the cost of unfamiliar
+  strategies, uptake of words, and the chance of repair.
+
+Three communities start with variants of a shared vocabulary. Each of the other
+three has its own starting vocabulary. Agents explore strategies on 12% of adaptive
+decisions and update their values at a learning rate of 0.08. Each round gives an
+agent a 0.15% chance of cultural succession. A drought shifts to the next good
+every 600 rounds.
+
+| Phase | Share of rounds | Chance of a cross-region encounter | Permitted contacts |
+|---|---:|---:|---|
+| Connected | 20% | 12% | All region pairs |
+| Fragmented | 45% | 1% where linked | Regions 0–1 and 3–4 can trade. Regions 2 and 5 are isolated. |
+| Trade routes | 25% | 8% | Neighbors along the chain from region 0 to region 5 |
+| Mass contact | 8% | 20% | All region pairs |
+| Dense contact | 2% | 45% | All region pairs |
+
+The study compares strategy learning with a random policy. Establishing that
+learning is *necessary* would require another baseline, such as always using a
+familiar word. Isolating the effect of fragmentation would require a matched
+continuous-contact control.
+
+## Tests
 
 ```sh
 python -m unittest discover -s tests
 ```
-
-Tests cover resource conservation, trade incentives, unknown-word interpretation,
-contact restrictions, strategy learning, transactional rollback, and deterministic restart,
-as well as the earlier simulator's regression tests.
-
-## Scope and next experiments
-
-The reinforcement mechanism is immediate-reward bandit learning, not deep RL or a
-language model. Agents use single-word requests and shared nonlinguistic concepts.
-There is no grammar, migration, market pricing, mortality, or empirical calibration.
-Three seeds are exploratory evidence about this program, not a universal conclusion.
-Useful next controls include always-conventional strategies, no-trade conditions,
-separate attitude interventions, and alternative production and tutor rules. LLM-based
-speech can later be introduced behind the same task and ledger, with explicit cost limits.
-
-## Earlier Galapagos experiments
-
-The original source, deployment manifests, and reports are retained for provenance.
-They are legacy experiments; the current commands above never start a broker or cluster.
-[Earlier project documentation](docs/legacy-galapagos.md) describes those historical
-versions. [Previous historical-comparison results](docs/results/historical-comparison/metrics.json)
-are separate from this study. The package namespace remains `galapagos` to preserve imports.

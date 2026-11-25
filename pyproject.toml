@@ -3,9 +3,10 @@ requires = ["setuptools>=68"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "galapagos-language-lab"
+name = "lingua-franca"
 version = "0.1.0"
-description = "Lingua Franca: artificial societies, trade, culture, and reinforcement learning"
+description = "An agent-based simulation of trade, vocabulary, and communication strategy"
+readme = "README.md"
 requires-python = ">=3.11"
 dependencies = []
 
@@ -13,9 +14,7 @@ dependencies = []
 analysis = ["matplotlib>=3.10,<4"]
 
 [project.scripts]
-lingua-franca = "galapagos.society:main"
-galapagos = "galapagos.__main__:main"
-galapagos-play = "galapagos.play:main"
+lingua-franca = "lingua_franca.society:main"
 
 [tool.setuptools.packages.find]
-include = ["galapagos*"]
+include = ["lingua_franca*"]

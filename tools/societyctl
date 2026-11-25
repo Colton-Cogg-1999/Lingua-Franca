@@ -9,12 +9,10 @@ case "${1:-status}" in
       exit 0
     fi
     systemctl --user reset-failed "$unit" 2>/dev/null || true
-    gh_dir="$(dirname "$(command -v gh)")"
     systemd-run --user --unit="$unit" --property=CPUQuota=100% --property=MemoryMax=2G \
       --property=Nice=10 --property=KillMode=control-group --working-directory="$project_dir" \
-      --setenv="PATH=$gh_dir:$PATH" \
-      "$project_dir/.venv/bin/python" -m galapagos.society_study \
-      --output "$project_dir/runtime/lingua-franca-study" --publish
+      "$project_dir/.venv/bin/python" -m lingua_franca.study \
+      --output "$project_dir/runtime/lingua-franca-study"
     ;;
   status)
     systemctl --user status "$unit" --no-pager || true
