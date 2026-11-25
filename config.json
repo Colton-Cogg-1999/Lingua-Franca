@@ -1,0 +1,18 @@
+{
+  "groups": 3,
+  "speakers_per_group": 12,
+  "encounters_per_round": 4,
+  "shared_rounds": 20,
+  "isolation_rounds": 160,
+  "reconnection_rounds": 80,
+  "contact": 0.25,
+  "innovation": 0.003,
+  "order_innovation": 0.004,
+  "accommodation": 0.25,
+  "repair": 0.7,
+  "learning": 0.8,
+  "retention": 0.985,
+  "turnover": 0.02,
+  "probes_per_direction": 300,
+  "seeds": [1, 2, 3, 4, 5, 6, 7, 8]
+}
