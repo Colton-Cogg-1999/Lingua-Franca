@@ -42,25 +42,51 @@ footer{margin-top:28px;padding-top:12px;border-top:1px solid var(--line);color:v
 @media(max-width:580px){.controls{grid-template-columns:1fr auto;gap:10px} .slider{grid-column:1/-1}
 th,td{padding:6px 2px} thead th{font-size:.78rem} thead th small{font-size:.72rem}
 tbody th{font-size:.8rem} table .form{min-height:42px;padding:2px 3px} #help{font-size:.85rem}}
+.story{max-width:740px;margin:24px auto}
+.story-head{display:flex;align-items:center;justify-content:space-between;gap:20px;flex-wrap:wrap;margin:0 0 18px}
+.story-head h2{font-size:clamp(28px,5vw,40px)}
+.timeline span{color:var(--mute);font-variant-numeric:tabular-nums}
+#phase{font-size:1rem}
+#scene{margin:5px 0 12px}
+.pair{margin:8px 0 14px}.pair tbody th{font-weight:650}.pair td{font:clamp(24px,4vw,38px)/1.2 Georgia,serif;padding-top:10px;padding-bottom:10px}
+.pair th:last-child,.pair td:last-child{background:var(--wash);padding-left:14px}.pair td:last-child{color:var(--sea);font-weight:600}
+.comparison{border-left:3px solid var(--brick);padding-left:12px;margin:14px 0 20px}
+.time-controls{display:flex;gap:16px;align-items:center}.time-controls>div{flex:1}.time-controls input{display:block}
+nav{display:flex;gap:8px;flex-wrap:wrap;margin:12px 0}nav button{cursor:pointer;padding:6px 11px}
+details{border-top:1px solid var(--line);margin-top:24px;padding-top:14px}summary{cursor:pointer;font-weight:650;color:var(--sea)}
+#help{margin:14px 0}#explore table{margin-top:12px}
+@media(max-width:420px){.story-head{gap:8px}.story-head h2{font-size:28px}.time-controls{gap:8px}nav button{font-size:.86rem}}
 </style>
 </head>
 <body>
-<header><div><h1>Lingua Franca</h1>
-<p>Six towns inherit one language. Follow a word as the empire’s roads empty, or see what happens if the towns keep talking.</p></div></header>
+<header><div><h1>How dialects form</h1>
+<p>Six imaginary towns speak related varieties of one language. Children learn words from locals and visitors. What happens when travel dries up?</p></div></header>
 <main>
-<div class="controls">
-<div><label for="meaning">Follow a word</label><select id="meaning"></select></div>
-<button class="play" id="play" type="button">Play</button>
-<div class="slider"><div class="timeline"><label for="generation">Generation <output id="number" for="generation"></output></label><span><span id="phase"></span><button type="button" class="jump" id="jump"></button></span></div>
-<input id="generation" type="range" min="0" value="0"></div></div>
+<section class="story" aria-labelledby="question">
+<div class="story-head"><h2 id="question"></h2><div><label for="meaning">Choose a meaning</label><select id="meaning"></select></div></div>
+<div class="timeline"><strong id="phase"></strong><span>Generation <output id="number" for="generation"></output></span></div>
+<p id="scene"></p>
+<table class="pair" aria-labelledby="question">
+<thead><tr><th scope="col">Town</th><th scope="col">At the start</th><th scope="col" id="now"></th></tr></thead>
+<tbody><tr><th scope="row">Roma</th><td id="roma-start"></td><td id="roma-now"></td></tr>
+<tr><th scope="row">Genua</th><td id="genua-start"></td><td id="genua-now"></td></tr></tbody></table>
+<p class="comparison" id="contrast"></p>
+<div class="time-controls"><button class="play" id="play" type="button">Play from here</button>
+<div><label for="generation">Move through generations</label><input id="generation" type="range" min="0" value="35"></div></div>
+<nav aria-label="Jump to a scene"><button type="button" data-scene="0">Founding</button>
+<button type="button" data-scene="35">During breakup</button><button type="button" data-scene="65">After reopening</button></nav>
+</section>
+<details id="explore"><summary>Explore all six towns and three histories</summary>
+<p id="help">Each row follows one town. Read across it to see how that town says the same word in three versions of history. Choose a word in the grid to see when it changed.</p>
 <table aria-label="Regional forms of the selected word across three societies">
 <thead><tr><th scope="col">Town</th>
 <th scope="col" class="focus-col">The empire falls<small id="fragmented-rule"></small></th>
 <th scope="col">Open roads<small id="sustained-rule"></small></th>
 <th scope="col">Closed borders<small id="isolated-rule"></small></th></tr></thead>
 <tbody id="towns"></tbody></table>
-<p id="help">Select a pronunciation to trace its history.</p>
+
 <section><h2 id="trail-title"></h2><ol id="trail"></ol><p id="origin"></p></section>
+</details>
 <footer id="about"></footer>
 </main>
 <script type="application/json" id="world"><!--WORLD--></script>
@@ -84,8 +110,23 @@ function render() {
   const g = Number(slider.value), m = Number(meaning.value);
   const divided = g > data.split && g <= data.reconnect;
   get("number").textContent = g + " / " + data.end;
-  get("phase").textContent = g <= data.split ? "Under one empire" : divided ? "After the fall" : "Routes reopen";
-  get("jump").textContent = g <= data.split ? "Jump to breakup" : divided ? "Jump to reopening" : "Back to founding";
+  get("phase").textContent = g <= data.split ? "Before the empire breaks up" : divided ? "The empire has broken up" : "The roads have reopened";
+  get("question").textContent = "How do you say “" + data.meanings[m] + "”?";
+  get("now").textContent = "Generation " + g;
+  get("scene").textContent = g <= data.split
+    ? "People still travel between the towns. Each new generation may pick up another town’s word or change a sound at home."
+    : divided ? "Most children now hear their own town’s speech. Only neighboring towns still exchange words occasionally."
+    : "Travel has resumed. Children hear distant towns’ words again, alongside the ones they grew up hearing at home.";
+  for (const [id, region] of [["roma", 4], ["genua", 3]]) {
+    get(id + "-start").textContent = formAt(0, region, 0, m)[0];
+    get(id + "-now").textContent = formAt(g, region, 0, m)[0];
+  }
+  const openRoma = formAt(g, 4, 1, m)[0], openGenua = formAt(g, 3, 1, m)[0];
+  get("contrast").textContent = g <= data.split
+    ? "All three histories share this beginning. Jump to “During breakup” to see what changes."
+    : "What if the roads had stayed open? At this same generation, " +
+      (openRoma === openGenua ? "both towns say “" + openRoma + "”." :
+       "Roma says “" + openRoma + "” and Genua says “" + openGenua + "”.");
   get("fragmented-rule").textContent = divided ? "Occasional visits to neighbors" : "Towns mix freely";
   get("sustained-rule").textContent = "Towns mix freely";
   get("isolated-rule").textContent = divided ? "Local tutors only" : "Towns mix freely";
@@ -123,7 +164,7 @@ towns.forEach((name,region) => {
   });
 });
 function stop() {
-  clearInterval(timer); timer = null; play.textContent = Number(slider.value) === data.end ? "Replay" : "Play";
+  clearInterval(timer); timer = null; play.textContent = Number(slider.value) === data.end ? "Replay from founding" : "Play from here";
 }
 play.addEventListener("click", () => {
   if (timer !== null) { stop(); return; }
@@ -135,11 +176,9 @@ play.addEventListener("click", () => {
   }, 520);
 });
 slider.addEventListener("input", () => { stop(); render(); });
-get("jump").addEventListener("click", () => {
-  const g = Number(slider.value);
-  slider.value = g <= data.split ? data.split + 1 : g <= data.reconnect ? data.reconnect + 1 : 0;
-  stop(); render();
-});
+for (const button of document.querySelectorAll("[data-scene]")) {
+  button.addEventListener("click", () => { slider.value = button.dataset.scene; stop(); render(); });
+}
 meaning.addEventListener("change", render);
 get("about").textContent = "World " + data.seed + " · Invented speech in Roman-inspired towns. Each generation learns from tutors. Local sound shifts can change several words together, and new words can spread between towns.";
 render();

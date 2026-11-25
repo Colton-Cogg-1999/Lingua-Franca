@@ -7,11 +7,12 @@ for *water* when most of the people you hear live in your own town?
 ## Play the dialect atlas
 
 Open **[dialects.html](docs/dialects.html)** from your checkout in a browser and
-press **Play**. The file works offline. If you’re on GitHub, use **Download raw file**
+follow the opening example for **water**. The file works offline. If you’re on GitHub, use **Download raw file**
 on that page, then open the downloaded file.
 
-Pick a word, drag through the generations, and click any town’s pronunciation
-to follow its history. The three societies start with the same towns and words.
+Compare Roma and Genua at the founding and at generation 35. Use **Founding**,
+**During breakup**, and **After reopening** to jump through the story. Expand
+**Explore all six towns and three histories** to trace any town’s pronunciation. The three societies start with the same towns and words.
 
 | Society | When the empire breaks up |
 |---|---|
