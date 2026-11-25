@@ -1,11 +1,29 @@
 # Lingua Franca
 
+How much do regional languages diverge when long-distance contact weakens, and
+what survives when communities reconnect? Lingua Franca explores this question
+using paired simulations of communities with a shared ancestral vocabulary.
+
+## Roman fragmentation pilot
+
+Across 24 matched worlds, listeners recognized **14.4%** of words from another
+region after 40 generations of fragmented contact, versus **43.7%** under
+sustained contact. In the fragmented worlds, **76.5%** of same-meaning word
+pairs still shared a root. After 30 generations of renewed contact, the
+recognition gap narrowed to 0.75 percentage points. The model tests a contact
+mechanism suggested by Roman history. Its rates are synthetic.
+
+[Results and figure](docs/results/contact-pilot/report.md) ·
+[Experimental design](docs/results/contact-pilot/design.md)
+
+## Earlier trade and communication study
+
 How does learning what to say affect trade and shared vocabulary? Lingua Franca is a
 Python simulation of six communities that barter for goods. A buyer requests a good
 using a word it knows. The seller interprets the request using its own vocabulary and
 available stock. Pointing can resolve a misunderstanding, at a cost to the buyer.
 
-## Findings
+### Findings
 
 Across three matched seeds, agents that learned which speaking strategy to use
 completed **4.40% of attempted trades**, compared with **3.72%** for agents choosing
@@ -26,7 +44,7 @@ The report includes the paired differences, contact phases, and ledger audits.
 [Metrics by run](docs/results/lingua-franca/metrics.json) ·
 [Individual trajectories](docs/results/lingua-franca/trajectories.png)
 
-## Run one experiment
+### Run one experiment
 
 From the checkout, run this with Python 3.11 or newer. The simulator uses the
 standard library. Its disk-space guard requires 20 GiB free on the output volume.
@@ -47,7 +65,7 @@ sqlite3 -readonly runs/example/ledger.sqlite \
   'SELECT strategy, count(*), avg(traded), avg(reward) FROM events GROUP BY strategy;'
 ```
 
-## Reproduce the study
+### Reproduce the study
 
 The defaults run three conditions for each seed (476, 911, and 2026), with 20
 agents per community and 24,000 rounds per run. The saved ledgers for the
@@ -73,7 +91,7 @@ On Linux, `tools/societyctl start` runs the study as a user service capped at on
 CPU core and 2 GiB of memory. It uses the checkout’s `.venv` and writes under
 `runtime/lingua-franca-study/`. Use `status`, `logs`, or `stop` to manage it.
 
-## How the model works
+### How the model works
 
 - **Trade.** Agents specialize in production, consume six goods, and face a rotating
   drought. A one-for-one barter goes through when both parties gain inventory
